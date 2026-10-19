@@ -177,18 +177,33 @@ a single-pad fallback), MCUXpresso Secure Provisioning path, USB/UI/watchdog che
 
 ## OLED orientation
 
-PM enclosure decision (#30): the OLED is mounted **rotated 180° to the user**, so
+PM enclosure decision (#30): the OLED module is mounted **rotated 180° to the user**, so
 `OLED_ROTATE_180` defaults to ON (CMake option, plus a `#ifndef OLED_ROTATE_180` default of 1 in
-`oled.h`). It only changes two opcodes in the SSD1315 init sequence in `oled.c`; the
+`oled.h`). Rotation is defined relative to the **module-normal orientation**, not the SSD1315
+reset values. The option only changes two opcodes in the init sequence in `oled.c`; the
 framebuffer and drawing code are identical in both builds (no software flip).
 
 | `OLED_ROTATE_180` | Segment remap | COM scan direction | Result |
 |---|---|---|---|
-| ON (default) | `0xA1` (column 127 → SEG0) | `0xC8` (COM63 → COM0) | image rotated 180° vs. the controller's reset orientation |
-| OFF | `0xA0` (column 0 → SEG0, reset) | `0xC0` (COM0 → COM63, reset) | controller reset orientation |
+| ON (default) | `0xA0` (column 0 → SEG0) | `0xC0` (COM0 → COM63) | module-normal rotated 180°: upright in the enclosure |
+| OFF | `0xA1` (column 127 → SEG0) | `0xC8` (COM63 → COM0) | module-normal: upright for a bare module on the bench |
 
-`-DOLED_ROTATE_180=OFF` is for a bare panel on the bench. Confirm on the first assembled unit
-that ON reads upright in the enclosure (bring-up checklist U2).
+Module-normal = `0xA1` + `0xC8`. Sources (fetched 2026-10-19 IST):
+
+- Adafruit_SSD1306 2.5.17 (`adafruit/Adafruit_SSD1306` master @ 4d19dfb747): `begin()` init3 sends
+  `SSD1306_SEGREMAP | 0x1, SSD1306_COMSCANDEC` (`Adafruit_SSD1306.cpp`; `SSD1306_SEGREMAP 0xA0`,
+  `SSD1306_COMSCANDEC 0xC8`, `SSD1306_COMSCANINC 0xC0 /* Not currently used */` in `Adafruit_SSD1306.h`).
+  Its 180° rotation (`setRotation(2)`) is done in software.
+- u8g2 `csrc/u8x8_d_ssd1306_128x64_noname.c` (`olikraus/u8g2` @ 0319996fef):
+  `..._flip0_seq` (normal, U8G2_R0) = `0x0a1, 0x0c8`; `..._flip1_seq` (180°, U8G2_R2) = `0x0a0, 0x0c0`.
+- Shenzhen Hansheng *HS96L03W2C03 Datasheet* VER 1.1 (LCSC C5248080), sample `OLED_Init()`:
+  `0xA1` "Set SEG/Column Mapping, 0xa0 左右反置 (mirrored L/R), 0xa1 正常 (normal)" and `0xC8`
+  "Set COM/Row Scan Direction, 0xc0 上下反置 (mirrored U/D), 0xc8 正常 (normal)". Read from the
+  search-indexed text of the PDF; LCSC's PDF link returns an HTML page to scripted downloads, so
+  the PDF itself was not downloaded.
+
+Confirm on the first assembled unit that the ON build reads upright in the enclosure (bring-up
+checklist U2).
 
 ## Flash notes
 

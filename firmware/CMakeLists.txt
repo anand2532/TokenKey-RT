@@ -50,7 +50,7 @@ if(NOT TK_PART MATCHES "^(DVL6B|CVL5B)$")
   message(FATAL_ERROR "TK_PART must be DVL6B or CVL5B (got '${TK_PART}')")
 endif()
 option(TK_WATCHDOG "Enable RTWDOG (2 s, fed by status_task after all task check-ins)" ON)
-option(OLED_ROTATE_180 "OLED mounted rotated 180 deg to the user (SSD1315 0xA1/0xC8 vs 0xA0/0xC0)" ON)
+option(OLED_ROTATE_180 "OLED module rotated 180 deg vs module-normal: ON = SSD1315 0xA0/0xC0, OFF = module-normal 0xA1/0xC8" ON)
 option(TK_FCB_SINGLE_PAD "Recovery image: FCB reads flash 1-1-1 (0x0B), boots even with QE=0" OFF)
 message(STATUS "TokenKey RT: TK_PART=${TK_PART} TK_WATCHDOG=${TK_WATCHDOG} "
                "TK_FCB_SINGLE_PAD=${TK_FCB_SINGLE_PAD} OLED_ROTATE_180=${OLED_ROTATE_180} build=${TK_GIT} generator=${CMAKE_GENERATOR}")
