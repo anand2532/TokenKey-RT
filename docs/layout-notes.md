@@ -161,7 +161,7 @@ Notes:
 
 ## 8. Open questions
 
-1. **Fit:** on one 50 × 40 mm top side, OLED (27 × 27) + EC11 (~12 × 13 plus tabs) + BGA fan-out zone (~16 × 16) + USB-C (~9 × 8) only fit if the OLED module is stacked on headers over low parts, or the H2 corner hole/keepout is shared with the module's own mounting hole. Otherwise the board grows to about 60 × 40 mm (allowed: 50 × 40 is a target). Decide with the enclosure. **Resolved by PM, 2026-10-19:** keep 50 × 40 mm with the OLED on a header over parts no taller than 2.5 mm.
+1. **Fit:** on one 50 × 40 mm top side, OLED (27 × 27) + EC11 (~12 × 13 plus tabs) + BGA fan-out zone (~16 × 16) + USB-C (~9 × 8) only fit if the OLED module is stacked on headers over low parts, or the H2 corner hole/keepout is shared with the module's own mounting hole. Otherwise the board grows to about 60 × 40 mm (allowed: 50 × 40 is a target). Decide with the enclosure. **Resolved by PM, 2026-10-19:** keep 50 × 40 mm with the OLED on a header over parts no taller than 2.5 mm. **Tightened by PM (placement phase): ≤ 2.0 mm.**
 2. **Enclosure:** not defined. It sets the mounting-hole positions, whether the holes are NPTH or plated (chassis GND), the board thickness (1.6 mm vs thinner), the USB-C overhang/recess, and the OLED window and encoder shaft height.
 3. **BGA via 0.15/0.30** (§4.2): DFM to confirm the 10.7:1 aspect ratio, and **via covering** (JLC drops "Tented" with stackup + impedance; mask-covered vs plugged/epoxy-filled) before release.
 4. **[decisions.md](decisions.md) still says "about 0.2 mm drill / 0.45 mm pad"** for the BGA via. **Resolved, 2026-10-19:** decisions.md now records the PM-locked 0.15 mm drill / 0.30 mm pad (PR #16).
@@ -178,10 +178,10 @@ Notes:
 
 ## 10. Keep-under-OLED area (DECIDED: 50 × 40 mm, OLED on a header over low parts)
 
-- **Area:** the OLED module outline (27.3 × 27.3 mm for the Winstar WEA012864D-03 class, about 27.3 × 27.8 mm for generic modules) on F.Fab/F.Courtyard, placed as in the §7 zoning (≈ x 22–49, y 4–31). Inside it:
-  - **Max component height on top: 2.5 mm** (PM). KiCad has no height DRC, so enforce it by hand: put each footprint's 3D model / `height` field in the BOM review, and add a `User.Comments` note "KEEP-UNDER-OLED: max 2.5 mm" on the outline. The staged `.kicad_dru` has a comment block for this; it is not machine-checked.
-  - Allowed: 0402/0603 passives, SOT-23, SOIC-8, 2016/3225 crystals, ABS07. Not allowed: EC11, USB-C, electrolytics, tall inductors (the SWPA4020 is 2.0 mm, OK), TC2030 (bottom anyway), test hooks.
-  - The module's own back-side parts, if any, must clear the tallest part underneath. With a 2.5 mm standoff and 2.5 mm parts there is **zero margin**, so prefer ≤ 2.0 mm under the module, or use a taller header.
+- **Area:** the OLED module outline (27.3 × 27.3 mm for the Winstar WEA012864D-03 class, about 27.3 × 27.8 mm for generic modules) on F.Fab/F.Courtyard, placed as in §13 (≈ x 6.5–33.8, y 4.3–32.1, over the MCU; the EC11 took the east edge). Inside it:
+  - **Max component height on top: 2.0 mm** (PM, tightened from 2.5 mm). KiCad has no height DRC, so enforce it by hand: put each footprint's 3D model / `height` field in the BOM review, and add a `User.Comments` note "KEEP-UNDER-OLED: max 2.0 mm" on the outline. The `.kicad_dru` has a comment block for this; it is not machine-checked.
+  - Allowed: 0402/0603 passives, SOT-23/SOT-23-6, 2016/3225 crystals, ABS07, the MAPBGA196. Not allowed: EC11, USB-C, SOIC-8 208 mil (up to 2.16 mm, so U4 sits outside the area), electrolytics, TC2030 (bottom anyway), test hooks. The SWPA4020 (L2) is **2.0 mm max: zero margin** at the 2.0 mm cap.
+  - The module's own back-side parts, if any, must clear the tallest part underneath (2.5 mm standoff − 2.0 mm parts = 0.5 mm).
 - **Header footprint:** 1 × 4, 2.54 mm pitch THT (VCC, GND, SCL, SDA; check the module's pin order). It sits on the module edge inside the area, ≥ 0.30 mm hole-to-copper.
 
 ## 11. Stack height (for the enclosure)
@@ -200,9 +200,66 @@ Hobby "generic" 0.96" modules on 27.3 × 27.8 mm PCBs have no published thicknes
 
 ## 12. Netlist import and re-validation
 
-- **Netlist import waits for schematic PR #10.** No footprints are placed until it merges; then the board is created as `hardware/schematic/TokenKey-RT.kicad_pcb` and `TokenKey-RT.kicad_dru.staged` is renamed to `TokenKey-RT.kicad_dru`.
+- **Done (placement phase):** the board was created as `hardware/schematic/TokenKey-RT.kicad_pcb` from the schematic and `TokenKey-RT.kicad_dru.staged` was renamed to `TokenKey-RT.kicad_dru`. See §13.
 - Re-validated with kicad-cli 9.0.2 on throwaway boards in `/tmp` (never committed), with the Board Setup via floor at 0.30/0.15 and hole clearance 0.20:
   - Empty 50 × 40 board with 4 × M2: **0 violations**.
   - **Positive:** 0.15/0.30 vias at 0.65 mm pitch inside the U1 courtyard, with a 0.10 mm track centred between them (0.200 mm hole-to-track, 0.125 mm pad-to-track): **pass**.
   - **Negative:** the same track offset 0.03 mm towards one via (hole-to-track 0.170 mm) fails `hole_clearance` 0.20. Old 0.20/0.35 vias with a centred 0.10 track fail `hole_clearance` 0.175 < 0.20. A 0.30/0.15 via outside the courtyard is flagged (annular < 0.125, hole < 0.30, diameter < 0.60).
 
+
+## 13. Board creation and placement (done; no routing)
+
+All board edits were made through the KiCad MCP connector (create_board_from_schematic, replace_board_outline, add_layer, set_design_rules, create_netclass, place_component, batch_move_components, set_board_origin). Coordinates below are KiCad page coordinates in mm (x east, y south; the board spans 0–50 × 0–40). The aux/grid origin is the lower-left corner (0, 40). This section supersedes the §7 zoning where they differ.
+
+**Board:** 50 × 40 mm, R1 corners, 4 copper layers (F.Cu, In1 "GND", In2 "PWR", B.Cu), tented vias. H1–H4 = `MountingHole_2.2mm_M2` at (3,3), (47,3), (3,37), (47,37). The 5 mm keepout is enforced by the footprint courtyard (r 2.45, F side), by the `.kicad_dru` rule "M2 mounting-hole copper keepout" (hole edge to copper ≥ 1.4 mm) and, for bottom parts, by placement. The connector has no rule-area tool, so there are no rule-area zones.
+
+**Import:** 99 footprints, 54 named nets; every symbol has a footprint and none is missing. Pad nets match the kicad-cli netlist (0 mismatches). DNP parts are placed but stay unfitted: C3, C4, L1, R1, R2, U3 (spare buck), C50, R10, R11, U5 (PSRAM).
+
+| Block | Placement |
+|---|---|
+| U1 MCU | Top, (17, 20), **rotation 0**: row A north, column 1 west, row P south, column 14 east. That matches the ball map: QSPI (L3/L4/N4/P3–P5) and DCDC (M1/M2/N1/N2) south-west, USB (L8/M8) south, SWD/UART/I2C/UI (E14/F12/G13/K14/L14/J11/K11/L11–M12) east. |
+| USB | J1 HRO TYPE-C-31-M-12 top, (17, 36.3), on the south edge with the opening south and centred under the BGA. U6 USBLC6 at (17, 28.8) rotated 90° (flow-through: DP west, DN east), about 2.6 mm from the J1 pads. Corridor x ≈ 15.5–18.5 from row M to J1 is kept free of parts. CC resistors R12/R13 beside U6 at (14.5, 29.6) / (19.6, 29.6). VBUS caps C51/C26 east of J1. |
+| DCDC | L2 SWPA4020 top, (9.15, 21.4), rotated 180°: the DCDC_LP pad faces M1/M2, about 1.5 mm from the BGA courtyard. Input caps C17/C20 (3V3) just south of L2 at N1/N2/L1/L2. Output caps C13 (22 µF), C11 and C12 north of L2, all on top. C5/R3 (PSWITCH) on the bottom west of the BGA. |
+| BGA decoupling | 0.22 µF (C6–C10, C14–C16, C19, C21, C23, C24, C27, C43) plus C41 on the **bottom under the BGA** (rotation-0 grid at x 13.8/16.0/18.2/20.2). 100 nF C29/C31/C33/C34 bottom north and C36–C38 bottom east. Bulk on top near the edge balls: C18 22 µF north; C30/C32/C35/C39 4.7 µF east; C22 (HIGH_CAP) south-west. C40/C42/C25 on the bottom south. |
+| QSPI flash | U4 SOIC-8 top, (3.5, 25), rotated 90°, in the west band **outside the OLED area** (SOIC-8 208 mil is up to 2.16 mm). R9 (SCLK 22 Ω) at (12.5, 26.4) next to the L4 escape; C49 and R8 at U4. |
+| Crystals | Y1 24 MHz 3225 at (24.6, 23.2), rotated 90°, east of N11/P11; C44/C45 east of it. Y2 ABS07 at (21.2, 26.6), just south-east of N9/P9 with room for a guard ring and about 0.9 mm from the USB corridor; C46/C47 south of it. |
+| Power in | U2 AP2112K top, (9, 35), C1 input and C2 output beside it, near the VBUS pins. The spare buck U3/L1/C3/C4/R1/R2 (DNP) is on the **bottom** south-east of J1. |
+| UI | J2 OLED header top, (16.34, 6.3), rotated 90° (pins along x at y 6.3, pin 1 west). OLED module footprint assumed at about x 6.5–33.8, y 4.3–32.1; verify the header-to-edge offset on the module drawing. SW2 EC11 top, (39.4, 25), rotated 90°, on the east edge between the H2/H4 keepouts and **not under the OLED**. SW3/SW4 just south of it; D1/R21 north of it (visible). Pull-ups and filters R14–R20, C52, C53 in a column at x 31–32.5 under the OLED edge. |
+| Boot / misc | Q1, R6, R22 (BOOT_MODE0 buffer) and R4, R5, C48 on top east of the BGA. R7 (BOOT_MODE0 10k to GND) on the bottom at (25, 15). |
+| Bottom debug | J3 TC2030-NL at (39, 4), in the north-east, with the top side above it kept clear. TP1/TP2 (UART TX/RX), TP3 GND, TP4 POR_B and TP5 ONOFF at x 26.5–31.5, y 10–12.6. SW1 SW_BOOT at (47.6, 31), rotated 90°, near the east edge for a case pinhole. U5 PSRAM (DNP) with R10/R11/C50 in the bottom west band. |
+
+**Heights under the OLED (top, max from datasheets):**
+
+| Part | Max height |
+|---|---|
+| L2 SWPA4020S4R7MT | 2.0 mm (**zero margin**) |
+| U1 MAPBGA196 | ≈ 1.4 mm |
+| U6 SOT-23-6 | 1.45 mm |
+| Q1 SOT-23 | ≈ 1.25 mm |
+| Y1 3225 | ≈ 1.0 mm |
+| Y2 ABS07 | ≈ 0.9 mm |
+| 0603 caps | ≤ 0.95 mm |
+| 0402 caps and resistors | ≤ 0.55 mm |
+
+Outside the area: U4 SOIC-8 (west band; 0.2 mm from the assumed module edge), J1 USB-C body (starts at y 32.6, 0.5 mm south of the assumed module edge), the EC11, SW3/SW4, D1 and U2.
+
+**DRC** (connector run_drc, KiCad 9.0.2, `.kicad_dru` active):
+
+| Type | Count |
+|---|---|
+| Errors | 0 |
+| Courtyard overlaps | 0 |
+| Items out of board | 0 |
+| Clearance errors | 0 |
+| Footprint (library) errors | 0 |
+| Warnings | 136: 81 silk_overlap, 49 silk_over_copper, 6 silk_edge_clearance |
+| Unconnected pads (expected, not routed) | 272 |
+
+The silk warnings are reference/value text overlaps; they get cleaned up at the silkscreen pass. J1's courtyard runs 0.45 mm past the south edge by design.
+
+**Known gaps:**
+- The connector has no stackup editor, so the JLC04161H-3313 dielectric table (§3) is not yet in the board file. Enter it in Board Setup → Physical Stackup.
+- The connector's netclass call persisted the classes (Default 0.15/0.15, Power 0.40, USB_HS 0.155/0.20, BGA_Escape 0.10/0.10 with 0.30/0.15 vias) but not the net assignments. Net-to-class patterns were added to `TokenKey-RT.kicad_pro` (USB_D[PN] → USB_HS; 3V3, VBUS, VDD_*, DCDC_*, NVCC_PLL, BUCK_SW → Power).
+- The connector's set_design_rules has no field for minimum annular ring, hole clearance or copper-to-edge, so the §4.1 floors (min clearance 0.09, annular 0.075, hole clearance 0.20, copper-to-edge 0.30) were written into the `TokenKey-RT.kicad_pro` design settings. The connector had also dropped the `sheets` list from that file; it was restored.
+- `.kicad_dru` fix: the "USB keep-away from other signals" rule now skips pad-to-pad pairs. Once the USB_HS class was active it flagged the fixed 0.5 mm pin pitch of J1 and U6 (6 errors). It still applies to tracks and vias.
+- No BGA fan-out vias yet (optional in the brief and skipped). Routing is the next phase.
