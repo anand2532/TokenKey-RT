@@ -25,6 +25,8 @@ CVAL = {'100nF': ('CL05B104KO5NNNC', 'C1525', 'C0402'), '220nF': ('CL05A224KA5NN
         '10uF': ('CL10A106KP8NNNC', 'C19702', 'C0603'), '22uF': ('CL10A226MQ8NRNC', 'C59461', 'C0603'),
         '15pF': ('0402CG150J500NT', 'C1548', 'C0402'), '18pF': ('0402CG180J500NT', 'C1549', 'C0402'),
         '10nF': ('CL05B103KB5NNNC', 'C15195', 'C0402')}
+# second sources: value -> (MPN_Alt, LCSC_Alt). 220nF: C47129 stock 1,400 on 2026-10-19; C16772 854,600 (LCSC)
+CALT = {'220nF': ('CL05B224KO5NNNC', 'C16772')}
 
 # symbol defs: name -> dict(ref, units:[ [ (num,name,type,side) ] ], hide_names)
 SYMS = {}
@@ -97,15 +99,15 @@ SHEETS = {k: [] for k in ['power', 'mcu', 'flash', 'usb', 'ui', 'debug']}
 TITLES = dict(power='Power: VBUS in, 3V3 LDO / DNP buck, RT1062 DCDC + decoupling', mcu='MCU: MIMXRT1062DVL6B, clocks, reset, boot',
               flash='FlexSPI A boot flash + DNP FlexSPI B PSRAM', usb='USB-C device, CC Rd, ESD', ui='UI: OLED, encoder, buttons, LED',
               debug='Debug: TC2030-NL SWD, UART/reset test pads')
-def part(sheet, ref, symn, value, fp, mpn, lcsc, nets, dnp=False, note='', units=None):
-    SHEETS[sheet].append(dict(ref=ref, sym=symn, value=value, fp=fp, mpn=mpn, lcsc=lcsc, nets=nets, dnp=dnp, note=note, units=units))
+def part(sheet, ref, symn, value, fp, mpn, lcsc, nets, dnp=False, note='', units=None, alt=None):
+    SHEETS[sheet].append(dict(ref=ref, sym=symn, value=value, fp=fp, mpn=mpn, lcsc=lcsc, nets=nets, dnp=dnp, note=note, units=units, alt=alt))
 cnt = {'U': 1}   # U1 reserved for the MCU
 def nref(p):
     cnt[p] = cnt.get(p, 0) + 1; return f'{p}{cnt[p]}'
 def R(sheet, val, a, b, dnp=False, note=''):
     mpn, lcsc = RVAL[val]; part(sheet, nref('R'), 'R', val, FP['R0402'], mpn, lcsc, {'1': a, '2': b}, dnp, note)
 def C(sheet, val, a, b='GND', dnp=False, note=''):
-    mpn, lcsc, f = CVAL[val]; part(sheet, nref('C'), 'C', val, FP[f], mpn, lcsc, {'1': a, '2': b}, dnp, note)
+    mpn, lcsc, f = CVAL[val]; part(sheet, nref('C'), 'C', val, FP[f], mpn, lcsc, {'1': a, '2': b}, dnp, note, alt=CALT.get(val))
 def FLAG(sheet, net): part(sheet, nref('#FLG'), 'PWR_FLAG', 'PWR_FLAG', '', 'virtual', 'N/A', {'1': net})
 
 # ---- power
@@ -195,9 +197,11 @@ part('usb', nref('U'), 'USBLC6-2SC6', 'USBLC6-2SC6', FP['SOT236'], 'USBLC6-2SC6'
 C('usb', '10uF', 'VBUS', note='VBUS bulk at connector')
 
 # ---- ui
-part('ui', nref('J'), 'OLED_I2C_4P', 'SSD1306 OLED 128x64', 'Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical',
-     'SSD1306 0.96in I2C module (generic)', 'UNVERIFIED', {'1': 'GND', '2': '3V3', '3': 'OLED_SCL', '4': 'OLED_SDA'},
-     note='Module pin order GND/VCC/SCL/SDA UNVERIFIED - check chosen module')
+part('ui', nref('J'), 'OLED_I2C_4P', 'OLED 0.96in 128x64 I2C (SSD1315)', 'Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical',
+     'HS96L03W2C03', 'C5248080', {'1': 'GND', '2': '3V3', '3': 'OLED_SCL', '4': 'OLED_SDA'},
+     note='HS HS96L03W2C03 module (datasheet V1.0 s1.4/1.5): pins 1 GND 2 VCC 3 SCL 4 SDA, 2.54 mm; VCC 2.8-3.3 V max (no on-module LDO, 3V3 only); '
+          'needs external SCL/SDA pull-ups (R14/R15); PCB 27.3x27.8 mm, 4x d2.5 mm holes on 23.3x23.8 mm. SSD1315 = SSD1306-compatible. '
+          'Alt (out of stock): Jixin JX040102-1 C284855, SSD1306 + LDO, 30x29 mm, different hole pattern')
 R('ui', '4.7k', '3V3', 'OLED_SCL'); R('ui', '4.7k', '3V3', 'OLED_SDA')
 part('ui', nref('SW'), 'RotaryEncoder_Switch', 'EC11E18244A5', 'Rotary_Encoder:RotaryEncoder_Alps_EC11E-Switch_Vertical_H20mm',
      'EC11E18244A5', 'C255515', {'A': 'ENC_A', 'B': 'ENC_B', 'C': 'GND', 'S1': 'ENC_SW', 'S2': 'GND'})
@@ -267,7 +271,7 @@ with open(os.path.join(LIB, 'TokenKey.kicad_sym'), 'w') as f:
 # BGA footprint from DS Fig.53 grid: 14x14, 0.65 mm pitch, A1 top-left, rows A..P (no I,O)
 rows = 'ABCDEFGHJKLMNP'
 fpl = ['(footprint "NXP_MAPBGA-196_10x10mm_Layout14x14_P0.65mm" (version 20241229) (generator "tokenkey_gen") (generator_version "9.0") (layer "F.Cu")',
-       '(descr "NXP 196 MAPBGA 10x10 mm, 0.65 mm pitch (i.MX RT1060 DVL6/CVL5). Pads 0.30 mm SMD - VERIFY against NXP SOT/98ASA drawing")',
+       '(descr "NXP 196 MAPBGA 10x10 mm, 0.65 mm pitch (i.MX RT1060 DVL6/CVL5). NXP SOT1546-2 / 98ASA01088D Rev O (balls d0.25-0.35, A 1.43 max). Land per NXP AN4982 Rev 4 s4.2: 0.325 mm Cu NSMD, mask opening 0.450 mm")',
        '(attr smd)',
        f'(property "Reference" "REF**" (at 0 -6.2 0) (layer "F.SilkS") (uuid {q(U())}) (effects (font (size 1 1) (thickness 0.15))))',
        f'(property "Value" "NXP_MAPBGA-196_10x10mm" (at 0 6.2 0) (layer "F.Fab") (uuid {q(U())}) (effects (font (size 1 1) (thickness 0.15))))',
@@ -279,7 +283,7 @@ fpl = ['(footprint "NXP_MAPBGA-196_10x10mm_Layout14x14_P0.65mm" (version 2024122
 for ri, r in enumerate(rows):
     for c in range(1, 15):
         x = (c - 7.5) * 0.65; y = (ri - 6.5) * 0.65
-        fpl.append(f'(pad "{r}{c}" smd circle (at {x:.3f} {y:.3f}) (size 0.3 0.3) (layers "F.Cu" "F.Paste" "F.Mask") (uuid {q(U())}))')
+        fpl.append(f'(pad "{r}{c}" smd circle (at {x:.3f} {y:.3f}) (size 0.325 0.325) (layers "F.Cu" "F.Paste" "F.Mask") (solder_mask_margin 0.0625) (uuid {q(U())}))')
 fpl.append(')')
 open(os.path.join(LIB, 'TokenKey.pretty', 'NXP_MAPBGA-196_10x10mm_Layout14x14_P0.65mm.kicad_mod'), 'w').write('\n'.join(fpl) + '\n')
 
@@ -309,6 +313,7 @@ def write_sheet(sname, page):
             props = [('Reference', p['ref'], 0, ht + 1.27, False), ('Value', p['value'], 0, hb - 1.27, False),
                      ('Footprint', p['fp'], 0, hb - 3.81, True), ('Datasheet', '', 0, 0, True), ('Description', p['note'], 0, 0, True),
                      ('MPN', p['mpn'], 0, 0, True), ('LCSC', p['lcsc'], 0, 0, True)]
+            if p.get('alt'): props += [('MPN_Alt', p['alt'][0], 0, 0, True), ('LCSC_Alt', p['alt'][1], 0, 0, True)]
             pr = ' '.join(f'(property {q(k)} {q(v)} (at {sx+dx:.2f} {sy-dy:.2f} 0) {fnt(hd)})' for k, v, dx, dy, hd in props)
             pinuu = ' '.join(f'(pin {q(pt[0])} (uuid {q(U())}))' for pt in pts)
             lib_id = 'TokenKey:' + p['sym']

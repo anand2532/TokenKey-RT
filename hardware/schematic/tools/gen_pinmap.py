@@ -63,16 +63,20 @@ L += ['', '## Other interfaces', '',
       '- **USB-C J1** TYPE-C-31-M-12 (C165948): CC1/CC2 5.1k Rd (R12/R13), D+/D- to U6 USBLC6-2SC6 (C7519), shield S1 to GND, SBU NC.',
       '- **Flash U4** W25Q64JVSSIQ (C179171): CS=FLASH_CS, CLK=FLASH_CLK (via R9), IO0..3 = SD_B1_08..11.',
       '- **PSRAM U5 (DNP)** APS6404L-3SQR-ZR (C3040877): FlexSPI B as above. Pinout and USON footprint UNVERIFIED.',
-      '- **OLED J2**: 1 GND, 2 3V3, 3 SCL, 4 SDA (module pin order UNVERIFIED).',
+      '- **OLED J2** HS HS96L03W2C03 (LCSC C5248080, SSD1315 = SSD1306-compatible, 0.96in 128x64 I2C, addr 0x3C/0x3D): 1 GND, 2 VCC(3V3), 3 SCL, 4 SDA, 2.54 mm header. '
+      'VCC 2.8-3.3 V max, no on-module regulator: 3V3 only, never VBUS. Datasheet requires external pull-ups: R14/R15 4.7k fitted. '
+      'PCB 27.3 x 27.8 x 2.65 mm (thickness incl. panel); 4 x d2.5 mm holes (d3.0 pad) on 23.3 x 23.8 mm centres, 2.0 mm from edges (HS96L03W2C03 datasheet V1.0 s1.4/1.5). '
+      'Alternate (out of stock 2026-10-19): Jixin JX040102-1, LCSC C284855: SSD1306, onboard SC662K-3.3 LDO and 4.7k resistors, 30 x 29 mm, holes on 25 x 24 mm (Jixin datasheet V1.0.0.0); different mechanics.',
       '- **Encoder SW2** EC11E18244A5 (C255515): A=ENC_A, B=ENC_B, C=GND, S1=ENC_SW, S2=GND.',
       '- **TC2030-NL J3**: 1 VCC(3V3), 2 SWDIO, 3 nRESET(POR_B), 4 SWCLK, 5 GND, 6 SWO (Tag-Connect TC2030-CTX datasheet).',
       '- **Test pads**: TP1 UART_TX, TP2 UART_RX, TP3 GND, TP4 POR_B, TP5 ONOFF.',
       '- **3V3**: U2 AP2112K-3.3TRG1 fitted; U3 TLV62569DBVR + L1 2.2uH + R1/R2 (Vout 3.33 V) + C3/C4 all DNP (fit buck and remove U2).', '',
       '## Unverified / open', '',
-      '1. RT1062 BGA footprint (TokenKey:NXP_MAPBGA-196_10x10mm...) is generated: 0.65 mm grid from DS Fig.53, **0.30 mm SMD pads are an assumption** - verify against the NXP package drawing / land pattern before layout.',
+      '1. RT1062 BGA footprint: package NXP SOT1546-2, case outline 98ASA01088D Rev O (01 Jun 2017; IMXRT1060CEC Rev 4 Fig. 53): 14x14 at 0.65 mm, ball d0.25-0.35 mm, A 1.43 max. '
+      'Land: 0.325 mm Cu NSMD, mask opening 0.450 mm (+0.125 mm), paste 1:1 (NXP AN4982 Rev 4 Table 1, s4.2.3); 0.20 mm mask web between openings. Check stencil (0.075-0.1 mm) and mask registration with the fab.',
       '2. APS6404L-3SQR-ZR pinout (assumed standard QSPI 8-pin) and USON-8 footprint (Winbond 3x2 placeholder).',
-      '3. OLED module pinout and LCSC part (generic module).',
-      '4. 220nF 0402 (C47129) has low LCSC stock (1,447); pick an alternate before ordering.',
+      '3. OLED: HS96L03W2C03 datasheet does not show whether the module itself carries SCL/SDA pull-ups (assume none; R14/R15 fitted). Confirm hole/header positions on a sample before enclosure CAD.',
+      '4. 220nF 0402: primary CL05A224KA5NNNC C47129 (25V X5R, 1,400 in stock 2026-10-19); second source CL05B224KO5NNNC C16772 (16V X7R, 854,600 in stock) in MPN_Alt/LCSC_Alt fields.',
       '5. VDD_USB_CAP C82 = 10uF read from a partly overlapped label on EVK SCH-31357 rev A2 (EVKB B1 files need NXP login).',
       '6. Crystal load caps need bench tuning; drive level in-circuit not measured.']
 open(os.path.join(ROOT, 'docs/pin-map.md'), 'w').write('\n'.join(L) + '\n')
