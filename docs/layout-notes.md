@@ -154,12 +154,12 @@ Notes:
 
 ## 8. Open questions
 
-1. **Fit:** on one 50 × 40 mm top side, OLED (27 × 27) + EC11 (~12 × 13 plus tabs) + BGA fan-out zone (~16 × 16) + USB-C (~9 × 8) only fit if the OLED module is stacked on headers over low parts, or the H2 corner hole/keepout is shared with the module's own mounting hole. Otherwise the board grows to about 60 × 40 mm (allowed: 50 × 40 is a target). Decide with the enclosure.
+1. **Fit:** on one 50 × 40 mm top side, OLED (27 × 27) + EC11 (~12 × 13 plus tabs) + BGA fan-out zone (~16 × 16) + USB-C (~9 × 8) only fit if the OLED module is stacked on headers over low parts, or the H2 corner hole/keepout is shared with the module's own mounting hole. Otherwise the board grows to about 60 × 40 mm (allowed: 50 × 40 is a target). Decide with the enclosure. **Resolved by PM, 2026-10-19:** keep 50 × 40 mm with the OLED on a header over parts no taller than 2.5 mm.
 2. **Enclosure:** not defined. It sets the mounting-hole positions, whether the holes are NPTH or plated (chassis GND), the board thickness (1.6 mm vs thinner), the USB-C overhang/recess, and the OLED window and encoder shaft height.
 3. **JLC via-hole-to-track in BGA fan-out** (§4.2): DFM confirming with JLC. If it is enforced, use POFV (paid on 4 L) or quote the 6-layer JLC06161H-3313 (free POFV) for comparison.
 4. **[decisions.md](decisions.md) still says "about 0.2 mm drill / 0.45 mm pad"** for the BGA via. The PM lock is 0.20 / 0.35. That row should be updated by PM.
 5. **MCU refdes:** the staged rules assume `U1`. Confirm with the schematic.
-6. **Default net class 0.15 vs 0.20 mm** (brief vs DFM) and **Power 0.30 vs 0.40 mm**: PM to pick; neither affects JLC compliance.
+6. **Default net class 0.15 vs 0.20 mm** (brief vs DFM) and **Power 0.30 vs 0.40 mm**: PM to pick; neither affects JLC compliance. **Resolved by PM, 2026-10-19:** Default 0.15 mm; Power 0.40 mm trunk / 0.30 mm branch.
 7. **USB DP L8 escape** runs between N8/P8 and N9/P9 (32 kHz crystal balls). This needs a fan-out study before placement; the alternative is escaping DP via the column 6/7 channel past N6 (VBUS, DC).
 8. Get the BGA land size from the NXP package drawing (assumed 0.30 mm NSMD) and re-check the channel math.
 
