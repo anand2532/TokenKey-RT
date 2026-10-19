@@ -29,3 +29,6 @@ node_modules/
 
 # NOTE: fab/ outputs are intentionally tracked; do not ignore them.
 hardware/schematic/tools/netlist.json
+
+# KiCad MCP DRC output
+*_drc_violations.json

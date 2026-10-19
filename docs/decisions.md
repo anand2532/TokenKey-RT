@@ -11,7 +11,7 @@
 | MCU (alternate) | MIMXRT1062CVL5B, pending ball-map confirmation |
 | BGA fanout | 2026-10-19, TokenKey PM: BGA via 0.15 mm drill / 0.30 mm pad; JLC small-via surcharge accepted. |
 | Netclasses | 2026-10-19, TokenKey PM: Default 0.15/0.15 mm; Power 0.40 mm trunk / 0.30 mm branch; standard via 0.6/0.3 mm; USB_HS 0.155/0.20 mm (90 ohm differential). |
-| Board | 2026-10-19, TokenKey PM: 50x40 mm; OLED on a header over parts no taller than 2.5 mm. |
+| Board | 2026-10-19, TokenKey PM: 50x40 mm; OLED on a header over parts no taller than 2.0 mm (PM, 2026-10-19; was 2.5 mm). |
 | Boot flash | W25Q64JVSSIQ |
 | External RAM | No SDRAM; QSPI PSRAM on FlexSPI B as a DNP option |
 | 3.3 V supply | AP2112K-3.3 LDO, with footprint room for a buck regulator later |
