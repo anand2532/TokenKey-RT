@@ -6,7 +6,10 @@ The origin there is header pin 1, +x toward pin 4, +y from the header edge towar
 J2 is placed at rotation 90 with its pins along +x, and the module extends south (+y in KiCad),
 so module +x/+y map directly onto board +x/+y with no mirroring.
 
-Usage: python3 oled_geometry.py [J2_y ...]   (default: 6.3 5.5)
+Usage: python3 oled_geometry.py [--header H] [J2_y ...]
+  defaults: header 3.0 mm (PM, 2026-10-19), J2 y 5.5 (main 6fb72fa) and 5.0 (Layout ask)
+Heights: design top = header + MODULE_ALLOW (3.6 mm envelope); nominal top = header + 2.65;
+lowest module point if the 1.0 mm back-side feature hangs below = header - 1.0.
 """
 import sys
 
@@ -42,10 +45,24 @@ def run(j2y):
     print("FPC bend x-span", f(fpc), " overlaps J1 x-span" if fpc[0] < J1_X[1] and fpc[1] > J1_X[0] else "")
     print(f"far edge y {pcb[3]:.2f}: gap to J1 body {J1_BODY_Y0 - pcb[3]:+.2f} mm, to J1 courtyard {J1_CRTYD_Y0 - pcb[3]:+.2f} mm")
 
-for y in (map(float, sys.argv[1:]) if len(sys.argv) > 1 else (6.3, 5.5)):
+MODULE_NOM, MODULE_ALLOW, BACK_FEATURE = 2.65, 3.6, 1.0
+LID_GAP, LID_T = 0.4, 1.5                 # lid underside above design top; lid plate thickness
+KEEP_UNDER = {"U6 SOT-23-6": 1.45, "U1 BGA": 1.4, "L2 SWPA4020 (board, until sync)": 2.0,
+              "L2 VLS3015CX (schematic)": 1.5}
+
+args = sys.argv[1:]
+header = 3.0
+if "--header" in args:
+    i = args.index("--header"); header = float(args[i + 1]); del args[i:i + 2]
+for y in (map(float, args) if args else (5.5, 5.0)):
     run(y)
 
-print("--- heights above main-PCB top (h = module-PCB underside / header standoff, a CAD parameter) ---")
-for h in (2.5, 3.0, 3.5, 4.0, 4.5):
-    print(f"h={h:.1f}: glass top {h+1.2+1.4:.2f} (PCB 1.2 + glass 1.4); datasheet 2.65 -> {h+2.65:.2f}; "
-          f"lowest point if the 1.0 mm back feature hangs below: {h-1.0:.2f}")
+top_design, top_nom = header + MODULE_ALLOW, header + MODULE_NOM
+lid_under = top_design + LID_GAP
+print(f"--- heights above main-PCB top, header (module-PCB underside) = {header:.2f} mm ---")
+print(f"OLED top: design {top_design:.2f} (header + {MODULE_ALLOW}), nominal {top_nom:.2f} (header + {MODULE_NOM})")
+print(f"lid underside {lid_under:.2f}, lid top {lid_under + LID_T:.2f}; nominal glass-to-lid gap {lid_under - top_nom:.2f}")
+low = header - BACK_FEATURE
+print(f"lowest module point if the {BACK_FEATURE} mm back feature hangs below: {low:.2f}")
+for k, v in KEEP_UNDER.items():
+    print(f"  margin over {k} ({v} mm): {low - v:+.2f}")
