@@ -1,5 +1,5 @@
 /*
- * TokenKey RT - USB frame protocol (firmware/docs/usb_protocol.md, draft v0.1)
+ * TokenKey RT - USB frame protocol (firmware/docs/usb_protocol.md, draft v0.2)
  *
  *   | 0xA5 | ver u8 | cmd u8 | seq u8 | len u16 LE | payload[len] | crc u16 LE |
  *   CRC-16/CCITT-FALSE (poly 0x1021, init 0xFFFF, no reflection, xorout 0) over ver..payload.
@@ -15,7 +15,8 @@
 #include <stdint.h>
 
 #define PROTO_SOF          0xA5u
-#define PROTO_VERSION      1u
+#define PROTO_VERSION      1u /* major: frame `ver` byte */
+#define PROTO_VERSION_MINOR 2u /* minor: reported in HELLO (v0.2: sessions/delta/spans/policy) */
 #define PROTO_MAX_PAYLOAD  4096u
 #define PROTO_OVERHEAD     8u /* SOF + ver + cmd + seq + len16 + crc16 */
 #define PROTO_MAX_FRAME    (PROTO_MAX_PAYLOAD + PROTO_OVERHEAD)
@@ -24,7 +25,7 @@
 
 enum {
     CMD_HELLO = 0x01, CMD_PING = 0x02, CMD_GET_INFO = 0x03,
-    CMD_SET_MODE = 0x10, CMD_GET_MODE = 0x11,
+    CMD_SET_MODE = 0x10, CMD_GET_MODE = 0x11, CMD_SET_POLICY = 0x12, CMD_GET_POLICY = 0x13,
     CMD_JOB_BEGIN = 0x20, CMD_JOB_DATA = 0x21, CMD_JOB_END = 0x22, CMD_RESULT_READ = 0x23, CMD_JOB_ABORT = 0x24,
     CMD_GET_STATS = 0x30, CMD_RESET_STATS = 0x31,
     CMD_ENTER_BOOTLOADER = 0x40,
@@ -36,7 +37,7 @@ enum {
     ERR_OK = 0x00, ERR_BAD_CRC = 0x01, ERR_BAD_LEN = 0x02, ERR_BAD_VERSION = 0x03,
     ERR_UNKNOWN_CMD = 0x04, ERR_BAD_PARAM = 0x05, ERR_BUSY = 0x06, ERR_NO_JOB = 0x07,
     ERR_BAD_OFFSET = 0x08, ERR_CTX_OVERFLOW = 0x09, ERR_HASH_MISMATCH = 0x0A, ERR_TIMEOUT = 0x0B,
-    ERR_SAFE_MODE = 0x0C, ERR_INTERNAL = 0x7F,
+    ERR_SAFE_MODE = 0x0C, ERR_SESSION_MISMATCH = 0x0D, ERR_POLICY_INVALID = 0x0E, ERR_INTERNAL = 0x7F,
 };
 
 /* ERROR detail used for commands that are defined in the spec but not implemented yet. */
@@ -97,7 +98,169 @@ typedef struct {
     bool mode_changed;     /* set by dispatch when SET_MODE changed the mode */
 } proto_device_t;
 
-#define PROTO_CAP_EVENTS 0x00000001u
+#define PROTO_CAP_EVENTS    0x00000001u /* bit0: unsolicited EVT_* frames */
+#define PROTO_CAP_XXH64     0x00000002u /* bit1: reserved (xxh64 hashes) */
+#define PROTO_CAP_MULTI_JOB 0x00000004u /* bit2: reserved (more than one active job) */
+#define PROTO_CAP_SESSIONS  0x00000008u /* bit3: v0.2 sessions, DELTA jobs, protected spans,
+                                         * SET/GET_POLICY, JOB_END v0.2 result. Set only once
+                                         * the handlers are implemented (not yet). */
+
+/* ---- v0.2 data model: sessions, delta jobs, protected spans ------------------------------ */
+#define JOB_FLAG_DIFF_AWARE   0x01u /* v0.1 bit0 */
+#define JOB_FLAG_FULL         0x02u /* 1 = FULL request (resets the session); 0 = DELTA (default) */
+#define PROTO_SESSION_NONE    0u    /* session_id 0 = stateless, FULL implied */
+#define PROTO_MAX_SPANS       16u   /* protected spans per JOB_BEGIN */
+#define PROTO_MAX_SESSIONS    4u    /* device-side session slots (LRU) */
+#define JOB_BEGIN_V01_LEN     11u   /* job_id u16, total_len u32, flags u8, token_budget u32 */
+#define JOB_BEGIN_V02_LEN     24u   /* + session_id u32, prefix_len u32, prefix_xxh u32, span_count u8 */
+#define JOB_SPAN_WIRE_LEN     9u    /* offset u32, len u32, kind u8 */
+
+/* Span kinds (usb_protocol.md 8.3). 4..255 are reserved for future minors and rejected
+ * (BAD_PARAM) by this version. Persistence: TASK, OTHER and SYSTEM_PROMPT spans stay
+ * protected for the whole session; LATEST_TOOL_OUTPUT only in the job that declares it.
+ * SYSTEM_PROMPT may only be declared in a FULL job. */
+typedef enum {
+    SPAN_TASK = 0,
+    SPAN_LATEST_TOOL_OUTPUT = 1,
+    SPAN_OTHER = 2,
+    SPAN_SYSTEM_PROMPT = 3,
+    SPAN_KIND_COUNT
+} proto_span_kind_t;
+#define PROTO_SPAN_KIND_PERSISTS(k) ((k) == SPAN_TASK || (k) == SPAN_OTHER || (k) == SPAN_SYSTEM_PROMPT)
+
+typedef struct {
+    uint32_t offset; /* relative to this job's input (the delta for DELTA jobs) */
+    uint32_t len;    /* > 0 */
+    uint8_t kind;    /* proto_span_kind_t */
+} proto_span_t;
+
+typedef struct {
+    uint16_t job_id;
+    uint32_t total_len;
+    uint8_t flags;
+    uint32_t token_budget;
+    uint32_t session_id;
+    uint32_t prefix_len; /* DELTA: session input bytes the host believes the device holds */
+    uint32_t prefix_xxh; /* DELTA: xxh32 (seed 0) of those bytes */
+    uint8_t span_count;
+    proto_span_t spans[PROTO_MAX_SPANS];
+    bool v02;            /* v0.2 fields were present */
+} proto_job_begin_t;
+
+/* ERROR detail for SESSION_MISMATCH: host must resend the job with JOB_FLAG_FULL. */
+enum { SESS_MM_UNKNOWN = 1, SESS_MM_PREFIX_LEN = 2, SESS_MM_PREFIX_XXH = 3, SESS_MM_EVICTED = 4 };
+/* ERROR detail for BAD_PARAM from JOB_BEGIN parsing */
+enum {
+    JB_DETAIL_SHORT = 1,          /* neither v0.1 (11 B) nor >= v0.2 (24 B + spans) */
+    JB_DETAIL_DELTA_NO_SESSION,   /* DELTA requested with session_id 0 */
+    JB_DETAIL_FULL_WITH_PREFIX,   /* FULL with non-zero prefix_len/prefix_xxh */
+    JB_DETAIL_SPANS_TRUNCATED,    /* span_count larger than the payload */
+    JB_DETAIL_SPAN_BASE = 0x100,  /* | span index: zero len, out of range, overlap/unsorted, bad kind */
+    JB_DETAIL_SYSPROMPT_DELTA = 0x200, /* | span index: SYSTEM_PROMPT declared in a DELTA job */
+};
+
+/* Parse a JOB_BEGIN payload (v0.1 or v0.2). Returns ERR_OK, ERR_BAD_PARAM or ERR_CTX_OVERFLOW
+ * (span_count > PROTO_MAX_SPANS); *detail gets the ERROR detail. Session-state checks
+ * (SESSION_MISMATCH) are done by the job engine, not here. */
+uint8_t proto_parse_job_begin(const uint8_t *p, uint16_t len, proto_job_begin_t *jb, uint16_t *detail);
+/* Encode a v0.2 JOB_BEGIN payload (host side / tests). Returns length or 0. */
+size_t proto_put_job_begin(uint8_t *out, size_t cap, const proto_job_begin_t *jb);
+
+/* ---- per-session state (device side; pure C so the host test can drive it) -------------- */
+#define PROTO_MAX_SESSION_SPANS 32u /* persistent protected spans per session */
+
+/* A protected span recorded for the session, in SESSION input coordinates (byte offset in
+ * the concatenated input since the last FULL), so it stays valid while later DELTA jobs only
+ * send new bytes and the span itself sits in the cache-stable prefix and is never re-sent. */
+typedef struct {
+    uint32_t offset;
+    uint32_t len;
+    uint8_t kind;      /* SPAN_TASK, SPAN_OTHER or SPAN_SYSTEM_PROMPT */
+    uint16_t job_id;   /* job that declared it */
+} proto_session_span_t;
+
+typedef struct {
+    uint32_t session_id;   /* PROTO_SESSION_NONE = free slot */
+    uint32_t in_len;       /* session input bytes received since the last FULL */
+    uint32_t in_xxh;       /* xxh32 (seed 0) of those bytes, maintained by the job engine */
+    uint32_t prev_out_len; /* previous result of this session (cache-stable report) */
+    uint32_t prev_out_xxh;
+    uint8_t span_count;
+    proto_session_span_t spans[PROTO_MAX_SESSION_SPANS]; /* sorted by offset */
+    /* job in progress (between proto_session_begin_job and _commit_job) */
+    uint32_t job_base;     /* session offset of this job's byte 0 */
+    uint8_t job_span_count;
+    proto_span_t job_spans[PROTO_MAX_SPANS]; /* this job's spans incl. LATEST_TOOL_OUTPUT */
+} proto_session_t;
+
+void proto_session_init(proto_session_t *s);
+/* Validate a parsed JOB_BEGIN against the session and apply it atomically:
+ *  - FULL: (re)starts the session: drops ALL recorded spans, in_len = 0, then records the
+ *    job's persistent spans (incl. SYSTEM_PROMPT).
+ *  - DELTA: session_id must match and prefix_len/prefix_xxh must equal in_len/in_xxh, else
+ *    ERR_SESSION_MISMATCH (detail SESS_MM_*) and *s is left unchanged. Recorded spans
+ *    (incl. SYSTEM_PROMPT) are kept; the job's persistent spans are appended at
+ *    in_len + offset.
+ * Returns ERR_OK, ERR_SESSION_MISMATCH, ERR_BAD_PARAM or ERR_CTX_OVERFLOW (span table or
+ * 32-bit session offset overflow). */
+uint8_t proto_session_begin_job(proto_session_t *s, const proto_job_begin_t *jb, uint16_t *detail);
+/* After JOB_END: the job's input becomes part of the session prefix. */
+void proto_session_commit_job(proto_session_t *s, uint32_t job_len, uint32_t new_in_xxh,
+                              uint32_t out_len, uint32_t out_xxh);
+/* Is any byte of [offset, offset+len) in session coordinates protected (recorded spans or
+ * spans of the job in progress)? Returns the kind of the first hit, or -1. */
+int proto_session_protected_kind(const proto_session_t *s, uint32_t offset, uint32_t len);
+
+/* JOB_END response (v0.2 appends everything after est_tokens_in). */
+typedef struct {
+    uint16_t job_id;
+    uint32_t est_tokens_in;
+    uint32_t est_tokens_out;
+    uint32_t out_len;          /* length of the full reduced session output (RESULT_READ space) */
+    uint32_t cache_stable_len; /* leading output bytes identical to the previous result of
+                                * this session (0 for FULL / stateless) */
+    uint32_t cache_stable_xxh; /* xxh32 (seed 0) of those bytes */
+    uint32_t protected_bytes;  /* bytes passed through untouched because of protected spans */
+} proto_job_result_t;
+#define JOB_END_V01_LEN 6u
+#define JOB_END_V02_LEN 26u
+size_t proto_put_job_result(uint8_t *out, size_t cap, const proto_job_result_t *r);
+uint8_t proto_parse_job_result(const uint8_t *p, uint16_t len, proto_job_result_t *r);
+
+/* ---- v0.2 reduction policy (SET_POLICY / GET_POLICY blob) ---------------------------------- */
+#define POLICY_VERSION          1u
+#define POLICY_PRESET_CUSTOM    0xFFu       /* SET: base on current policy; GET: matches no preset */
+#define POLICY_CACHE_PREFIX_ALL 0xFFFFFFFFu /* keep every already-sent output byte untouched */
+#define POLICY_BLOB_MAX         64u
+enum { SEG_TEXT = 0, SEG_CODE = 1, SEG_TOOL_OUTPUT = 2, SEG_LOG = 3, SEG_TYPE_COUNT };
+enum {
+    POL_TLV_BUDGET_PCT = 0x01,          /* u8 1..100 */
+    POL_TLV_DEDUP = 0x02,               /* u8 0/1 */
+    POL_TLV_CACHE_STABLE_PREFIX = 0x03, /* u32 bytes, POLICY_CACHE_PREFIX_ALL = all */
+    POL_TLV_TYPE_WEIGHT = 0x04,         /* {seg_type u8, weight u8 0..100}, repeatable */
+    POL_TLV_OPTIONAL = 0x80,            /* type bit7: receiver may ignore if unknown */
+};
+/* POLICY_INVALID detail: header problems < 0x100, TLV problems = reason << 8 | tlv type */
+enum {
+    POL_DETAIL_VERSION = 0x01, POL_DETAIL_TRUNCATED = 0x02, POL_DETAIL_PRESET = 0x03,
+    POL_DETAIL_BAD_LEN = 0x100, POL_DETAIL_BAD_VALUE = 0x200, POL_DETAIL_UNKNOWN = 0x300,
+};
+
+typedef struct {
+    uint8_t preset;                      /* tk_mode_t or POLICY_PRESET_CUSTOM */
+    uint8_t budget_pct;
+    bool dedup;
+    uint32_t cache_stable_prefix;
+    uint8_t type_weight[SEG_TYPE_COUNT]; /* keep priority, 0..100 */
+} proto_policy_t;
+
+void proto_policy_preset(tk_mode_t m, proto_policy_t *pol);
+/* Parse a SET_POLICY blob on top of *cur (used when preset = CUSTOM). On success *out is the
+ * new policy and ERR_OK is returned; otherwise ERR_POLICY_INVALID and *detail, *out untouched. */
+uint8_t proto_policy_parse(const uint8_t *p, uint16_t len, const proto_policy_t *cur, proto_policy_t *out,
+                           uint16_t *detail);
+/* Serialize the fully expanded policy (GET_POLICY response). Returns length or 0. */
+size_t proto_policy_serialize(const proto_policy_t *pol, uint8_t *out, size_t cap);
 
 /* Handle one parse result and write the reply frame into out. Returns reply length (0 = no
  * reply). */

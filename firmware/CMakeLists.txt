@@ -1,8 +1,12 @@
 # TokenKey RT firmware (MIMXRT1062, FreeRTOS, TinyUSB)
 #
+# Generator-agnostic: works with CMake's default generator (Unix Makefiles on Linux/macOS,
+# no Ninja needed) or with -G Ninja. Always drive the build with `cmake --build`.
+#
 #   Firmware : cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=arm-none-eabi.cmake [-DTK_PART=DVL6B|CVL5B]
 #              cmake --build build            -> build/tokenkey_rt.elf / .bin / .hex
 #   Host test: cmake -S . -B build-host && cmake --build build-host && ctest --test-dir build-host
+#   Presets  : cmake --preset dvl6b && cmake --build --preset dvl6b   (see CMakePresets.json)
 cmake_minimum_required(VERSION 3.20)
 project(tokenkey_rt C ASM)
 
@@ -46,7 +50,10 @@ if(NOT TK_PART MATCHES "^(DVL6B|CVL5B)$")
   message(FATAL_ERROR "TK_PART must be DVL6B or CVL5B (got '${TK_PART}')")
 endif()
 option(TK_WATCHDOG "Enable RTWDOG (2 s, fed by status_task after all task check-ins)" ON)
-message(STATUS "TokenKey RT: TK_PART=${TK_PART} TK_WATCHDOG=${TK_WATCHDOG} build=${TK_GIT}")
+option(OLED_ROTATE_180 "OLED module rotated 180 deg vs module-normal: ON = SSD1315 0xA0/0xC0, OFF = module-normal 0xA1/0xC8" ON)
+option(TK_FCB_SINGLE_PAD "Recovery image: FCB reads flash 1-1-1 (0x0B), boots even with QE=0" OFF)
+message(STATUS "TokenKey RT: TK_PART=${TK_PART} TK_WATCHDOG=${TK_WATCHDOG} "
+               "TK_FCB_SINGLE_PAD=${TK_FCB_SINGLE_PAD} OLED_ROTATE_180=${OLED_ROTATE_180} build=${TK_GIT} generator=${CMAKE_GENERATOR}")
 
 set(TP ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 set(TUSB ${TP}/tinyusb/src)
@@ -80,6 +87,8 @@ target_compile_definitions(tokenkey_rt.elf PRIVATE
   CPU_MIMXRT1062${TK_PART}
   TK_PART_${TK_PART}=1
   TK_WATCHDOG=$<BOOL:${TK_WATCHDOG}>
+  TK_FCB_SINGLE_PAD=$<BOOL:${TK_FCB_SINGLE_PAD}>
+  OLED_ROTATE_180=$<BOOL:${OLED_ROTATE_180}>
   ${TK_VERSION_DEFS})
 target_compile_options(tokenkey_rt.elf PRIVATE -O2 -g3)
 # Strict warnings on our code; vendored code is compiled as shipped.
@@ -92,11 +101,15 @@ target_link_options(tokenkey_rt.elf PRIVATE
 set_target_properties(tokenkey_rt.elf PROPERTIES LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/MIMXRT1062_flexspi.ld)
 
 # .bin is a raw image of flash starting at 0x6000_0000 (FCB at offset 0): write it at the
-# start of the QSPI flash.
+# start of the QSPI flash. Absolute paths + generator expressions only, so the step behaves
+# identically under Unix Makefiles and Ninja (no reliance on the generator's working dir).
+set(TK_OUT ${CMAKE_CURRENT_BINARY_DIR}/tokenkey_rt)
 add_custom_command(TARGET tokenkey_rt.elf POST_BUILD
-  COMMAND ${CMAKE_OBJCOPY} -O binary tokenkey_rt.elf tokenkey_rt.bin
-  COMMAND ${CMAKE_OBJCOPY} -O ihex tokenkey_rt.elf tokenkey_rt.hex
-  COMMAND ${CMAKE_SIZE} -A -x tokenkey_rt.elf
-  COMMAND ${CMAKE_SIZE} tokenkey_rt.elf
-  BYPRODUCTS tokenkey_rt.bin tokenkey_rt.hex
-  COMMENT "objcopy -> tokenkey_rt.bin / .hex")
+  COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:tokenkey_rt.elf> ${TK_OUT}.bin
+  COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:tokenkey_rt.elf> ${TK_OUT}.hex
+  COMMAND ${CMAKE_SIZE} -A -x $<TARGET_FILE:tokenkey_rt.elf>
+  COMMAND ${CMAKE_SIZE} $<TARGET_FILE:tokenkey_rt.elf>
+  BYPRODUCTS ${TK_OUT}.bin ${TK_OUT}.hex
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMENT "objcopy -> tokenkey_rt.bin / .hex"
+  VERBATIM)

@@ -5,8 +5,7 @@
  * Frames (firmware/docs/usb_protocol.md) are parsed by proto.c as a byte stream, so a frame
  * may span any number of USB packets.
  *
- * VID/PID: 0x1FC9 is NXP's VID, used here for DEVELOPMENT ONLY with a made-up PID. It must
- * be replaced (pid.codes or an owned VID) before any unit leaves the bench.
+ * VID/PID: development values, see TK_USB_PID below (the single place they are defined).
  */
 #include <string.h>
 
@@ -19,8 +18,11 @@
 #include "proto.h"
 #include "tusb.h"
 
-#define TK_USB_VID 0x1FC9u /* DEV ONLY: NXP Semiconductors VID */
-#define TK_USB_PID 0xFFF0u /* DEV ONLY: placeholder, not assigned to us */
+/* TODO(#30): replace the dev VID/PID (pid.codes allocation or an owned VID) before any unit
+ * leaves the bench. 0x1FC9 is NXP's VID; 0xFFF0 is a made-up PID not assigned to us. This is
+ * the only place either value is defined; README "USB protocol" points here. */
+#define TK_USB_VID 0x1FC9u
+#define TK_USB_PID 0xFFF0u
 
 /* ------------------------------------------------------------------------------------------ */
 /* Hardware: PLL3 / USBPHY1 / OTG1 clocks (sequence from fsl_clock.c CLOCK_EnableUsbhs0*)       */

@@ -5,29 +5,34 @@ QSPI flash, USB OTG1 vendor-bulk frame protocol (TinyUSB), SSD1315 OLED, EC11 en
 buttons. Specs: [`docs/firmware_architecture.md`](docs/firmware_architecture.md),
 [`docs/usb_protocol.md`](docs/usb_protocol.md), pins in [`../docs/pin-map.md`](../docs/pin-map.md).
 
-Status: **skeleton, builds cleanly, not yet run on hardware** (see "Bring-up checklist").
+Status: **skeleton, builds cleanly, not yet run on hardware** (see [`docs/bringup_checklist.md`](docs/bringup_checklist.md)).
 
 ## Layout (flat)
 
 | File | Contents |
 |---|---|
-| `CMakeLists.txt`, `arm-none-eabi.cmake` | build (firmware with the toolchain file, host test without) |
+| `CMakeLists.txt`, `arm-none-eabi.cmake`, `CMakePresets.json` | build (firmware with the toolchain file, host test without); presets `dvl6b`, `cvl5b`, `recovery-1pad`, `host` |
 | `MIMXRT1062_flexspi.ld` | XIP linker script: FCB @0x6000_0000, IVT/boot data @0x6000_1000, code @0x6000_2000, DTCM data/stacks |
-| `boot_hdr.c` | FlexSPI NOR config block (W25Q64, quad 1-4-4 0xEB, 50 MHz SDR, **internal loopback** since DQS is NC), IVT, boot data |
+| `boot_hdr.c` | FlexSPI NOR config block (W25Q64, quad 1-4-4 0xEB, 50 MHz SDR, **internal loopback** since DQS is NC; `TK_FCB_SINGLE_PAD` recovery variant 1-1-1 0x0B), IVT, boot data |
 | `startup.c` | vector table, `Reset_Handler` (FlexRAM ITCM 128K / DTCM 256K / OCRAM 128K), WDOG1/2 + RTWDOG off, .data/.bss, FPU, MPU, I/D cache, fault dump on LPUART1 |
 | `board.c/.h` | clocks + DCDC (600/528 MHz), pin mux, LPUART1 log, LED, GPIO, OCOTP, RTWDOG |
-| `main.c` | static queues/event group/tasks, `status_task` (LED + watchdog) |
+| `main.c` | static queues/event group/tasks; `status_task` is the LED + watchdog task |
 | `FreeRTOSConfig.h` | kernel config (static allocation only, IRQ priority split) |
 | `usb_vendor.c`, `tusb_config.h` | USB PHY/clock init, descriptors, `usb_task` |
 | `proto.c/.h` | frame CRC/builder/parser/dispatcher (pure C, host-tested) |
 | `oled.c/.h`, `ui.c` | LPI2C1 + SSD1315 driver, 1 KB framebuffer, 5x7 font; `ui_task` screens |
 | `input.c` | GPIO1 ISR + `input_task` (quadrature table, debounce, long press) |
-| `test_proto.c` | host unit test: CRC-16 check 0x29B1, parser resync, BAD_CRC/BAD_LEN/BAD_VERSION, commands |
+| `test_proto.c` | host unit test: CRC-16 check 0x29B1, parser resync, BAD_CRC/BAD_LEN/BAD_VERSION, commands, v0.2 JOB_BEGIN/spans, JOB_END result, policy TLVs |
+| `tools/w25q_status.py` | pyOCD script: read W25Q64 SR1/SR2/SR3 over SWD, check/set QE |
+| `docs/bringup_checklist.md` | bring-up steps, QE check, blhost recovery commands with NXP sources |
 | `third_party/` | minimal vendored CMSIS core, MIMXRT1062 device headers, TinyUSB 0.20.0, FreeRTOS-Kernel V11.1.0 ([manifest + licenses](third_party/README.md)) |
 
 ## Build
 
-Needs `arm-none-eabi-gcc` (tested with Debian `gcc-arm-none-eabi` 14.2.rel1) and CMake >= 3.20.
+Needs `arm-none-eabi-gcc` (tested with Debian `gcc-arm-none-eabi` 14.2.rel1) and CMake >= 3.20
+(>= 3.21 for the presets). **Ninja is not required.** The build is generator-agnostic: CMake's
+default generator (Unix Makefiles on Linux/macOS) works, and so does `-G Ninja` if you have it.
+Always drive the build with `cmake --build`, never `make`/`ninja` directly in docs or scripts.
 
 ```sh
 cd firmware
@@ -35,18 +40,28 @@ cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=arm-none-eabi.cmake -DTK_PART=DVL6B  
 cmake --build build -j
 # -> build/tokenkey_rt.elf, build/tokenkey_rt.bin (raw image of flash from 0x6000_0000), build/tokenkey_rt.hex
 
+# same, explicit generator (either works):
+cmake -S . -B build -G "Unix Makefiles" -DCMAKE_TOOLCHAIN_FILE=arm-none-eabi.cmake
+cmake -S . -B build-ninja -G Ninja -DCMAKE_TOOLCHAIN_FILE=arm-none-eabi.cmake
+
+# presets (Unix Makefiles): dvl6b, cvl5b, recovery-1pad, host (+ dvl6b-ninja)
+cmake --preset cvl5b && cmake --build --preset cvl5b          # -> build-cvl5b/
+
 # host unit test
 cmake -S . -B build-host && cmake --build build-host && ctest --test-dir build-host
+# or: cmake --preset host && cmake --build --preset host && ctest --preset host
 ```
 
-Options: `-DTK_PART=DVL6B|CVL5B` (default DVL6B), `-DTK_WATCHDOG=OFF` (bench debugging).
+Options: `-DTK_PART=DVL6B|CVL5B` (default DVL6B), `-DTK_WATCHDOG=OFF` (bench debugging),
+`-DTK_FCB_SINGLE_PAD=ON` (recovery image whose FCB reads 1-1-1, boots with QE=0; see the
+bring-up checklist), `-DOLED_ROTATE_180=ON|OFF` (default **ON**, see "OLED orientation").
 No heap: `malloc/calloc/realloc/free` are `--wrap`ped without a definition, so any use fails at link time.
 
 ### Clock / part selection (never 600 MHz on a CVL5B)
 
 | Build | OCOTP 0x440[17:16] SPEED_GRADING | Result |
 |---|---|---|
-| `TK_PART=CVL5B` | ignored | 528 MHz, VDD_SOC 1.225 V. The 600 MHz path is not compiled in. |
+| `TK_PART=CVL5B` | ignored | 528 MHz, VDD_SOC 1.225 V (**PM-approved**, inside the CVL5B 1.26 V limit). The 600 MHz path is not compiled in. |
 | `TK_PART=DVL6B` | `10` (600 MHz grade) | 1.275 V first, then ARM PLL 1200 MHz / 2 = 600 MHz |
 | `TK_PART=DVL6B` | `01` / `00` / `11` | fallback: 528 MHz @ 1.225 V, logged on UART and shown on the splash screen |
 
@@ -54,7 +69,15 @@ Sequence: switch core to the 24 MHz OSC, set DCDC (`DCDC_REG3[TRG]`, 0.8 V + 25 
 for DC_OK, set AHB /1, IPG /4, ARM_PODF /2, then lock PLL1 and switch back. Voltage is always
 set while running at 24 MHz, so it is raised before the frequency goes up. No NXP SDK clock code
 is used (`BOARD_BootClockRUN` is never called). FlexSPI and SEMC clock roots are left as the boot
-ROM set them. The CVL5B target is a `-DTK_CVL5B_SOC_MV=` define, range-checked at compile time to 1.15..1.25 V.
+ROM set them. The CVL5B target is a `-DTK_CVL5B_SOC_MV=` define (default 1225 = 1.225 V,
+PM-approved, inside the CVL5B 1.26 V limit), range-checked at compile time to 1.15..1.25 V next
+to the 528 MHz guard in `board.c`.
+
+Fuse decode, verified against NXP **IMXRT1060RM Rev. 3 (07/2021), chapter 22 Fusemap, section 22.3
+"Fusemap Descriptions Table", Table 22-9, p.1301**: OCOTP 0x440[17:16] SPEED_GRADING, burned by
+the tester: `00` reserved, `01` 500 MHz (P/N code 05), `10` 600 MHz (P/N code 06), `11` reserved.
+(Fetched 2026-10-19 from `https://www.pjrc.com/teensy/IMXRT1060RM_rev3.pdf`, a mirror of the NXP
+document.) Only `10` enables 600 MHz; everything else keeps the 528 MHz fallback.
 
 ## Flashing
 
@@ -67,14 +90,17 @@ The `.bin` already contains the FCB and IVT; write it to the **start** of the QS
    SW1. Boot pins latch `BOOT_MODE[1:0] = 01` = serial downloader.
 2. The ROM enumerates on USB as HID `1FC9:0135` (also listens on LPUART1, TP1/TP2).
 3. Either use **NXP MCUXpresso Secure Provisioning Tool** (processor MIMXRT1062, boot device
-   *FlexSPI NOR - QuadSPI*, unsigned image, write `tokenkey_rt.bin` at 0x6000_0000), or SPSDK by hand:
+   *FlexSPI NOR - QuadSPI*, unsigned image, write `tokenkey_rt.bin` at 0x6000_0000), or SPSDK
+   `sdphost` + `blhost` by hand. The exact, source-cited commands (including QE setting and a
+   single-pad fallback) are in [`docs/bringup_checklist.md`](docs/bringup_checklist.md) step F2.
+   Short form:
    ```sh
-   sdphost -u 0x1fc9,0x0135 -- write-file 0x20001C00 ivt_flashloader.bin   # flashloader from the SDK/SPT
-   sdphost -u 0x1fc9,0x0135 -- jump-address 0x20001C00
-   blhost  -u 0x15a2,0x0073 -- fill-memory 0x2000 4 0xC0000002    # QuadSPI NOR, SFDP, 50 MHz
-   blhost  -u 0x15a2,0x0073 -- configure-memory 0x9 0x2000
-   blhost  -u 0x15a2,0x0073 -- flash-erase-region 0x60000000 0x100000
-   blhost  -u 0x15a2,0x0073 -- write-memory 0x60000000 build/tokenkey_rt.bin
+   sdphost -u 0x1fc9,0x0135 -- write-file 0x20000000 ivt_flashloader.bin
+   sdphost -u 0x1fc9,0x0135 -- jump-address 0x20000400
+   blhost -u -- fill-memory 0x2000 4 0xC0000402 word   # SFDP quad, QE = SR2[1] via 0x31, 50 MHz
+   blhost -u -- configure-memory 0x9 0x2000
+   blhost -u -- flash-erase-region 0x60000000 0x100000
+   blhost -u -- write-memory 0x60000000 build/tokenkey_rt.bin
    ```
 4. Power-cycle or pulse reset without SW1: `BOOT_MODE = 10`, internal boot from FlexSPI.
 
@@ -97,7 +123,7 @@ firmware never drives GPIO_AD_B0_04/05 (BOOT_MODE0/1).
 | `usb_task` | 4 | 1024 | `tud_task_ext()`, bulk OUT -> `proto_parser_feed()` -> `proto_handle()` -> bulk IN; sends EVT_MODE/EVT_BUTTON | TinyUSB event queue (20 ms) |
 | `input_task` | 3 | 256 | encoder quadrature decode, 20 ms button debounce, 800 ms long press | `q_input_raw` (100 ms idle, 1 ms while active) |
 | `ui_task` | 2 | 512 | splash, mode screen, encoder/BTN mode selection | `q_ui` (100 ms) |
-| `status_task` | 1 | 256 | LED_STAT patterns, watchdog feed | 20 ms period |
+| `status_task` | 1 | 256 | **the LED + watchdog task**: LED_STAT patterns and the only RTWDOG feed | 20 ms period |
 | idle | 0 | 128 | kernel | - |
 
 IRQs: USB_OTG1 priority 5, GPIO1_16_31 priority 6; both `>= configMAX_SYSCALL_INTERRUPT_PRIORITY` (5),
@@ -119,7 +145,8 @@ kernel at 15. All kernel objects are static (`configSUPPORT_DYNAMIC_ALLOCATION 0
    event group wd: WD_BIT_USB | WD_BIT_INPUT | WD_BIT_UI  (each task sets its bit every loop)
 ```
 
-Watchdog: `status_task` checks the event group every 500 ms and feeds RTWDOG (2 s timeout, 32 kHz
+`status_task` is the LED + watchdog task: it owns LED_STAT and is the only code that feeds the
+watchdog. Watchdog: `status_task` checks the event group every 500 ms and feeds RTWDOG (2 s timeout, 32 kHz
 LPO, halted while a debugger holds the core) only if all three bits are set, then clears them.
 A stuck task stops the feed and the chip resets.
 
@@ -129,28 +156,58 @@ Mode changes from the host (SET_MODE) show on the OLED; local changes go to the 
 
 ## USB protocol (implemented subset)
 
-VID `0x1FC9` / PID `0xFFF0`: **DEV ONLY placeholder.** 0x1FC9 is NXP's VID. Replace both before
-anything leaves the bench. Interface class 0xFF, bulk OUT 0x01 / IN 0x81, 512 B HS / 64 B FS.
-Linux udev example: `SUBSYSTEM=="usb", ATTR{idVendor}=="1fc9", ATTR{idProduct}=="fff0", MODE="0666"`.
+VID/PID: **DEV ONLY**, defined once as `TK_USB_VID` / `TK_USB_PID` in `usb_vendor.c` (the single
+to-do for replacing them is marked there, nowhere else). Interface class 0xFF, bulk OUT 0x01 / IN 0x81, 512 B HS / 64 B FS.
+Linux udev example: use the hex values of `TK_USB_VID`/`TK_USB_PID`:
+`SUBSYSTEM=="usb", ATTR{idVendor}=="<vid>", ATTR{idProduct}=="<pid>", MODE="0666"`.
 
-Implemented: HELLO (15-byte reply), PING (<= 64 B echo), GET_INFO (TLV serial/build id/flash
+Protocol draft v0.2 (minor 2, [`docs/usb_protocol.md`](docs/usb_protocol.md)). Implemented: HELLO (16-byte reply, last byte = minor), PING (<= 64 B echo), GET_INFO (TLV serial/build id/flash
 size/uptime), SET_MODE, GET_MODE, ERROR replies (BAD_CRC, BAD_LEN, BAD_VERSION, BAD_PARAM,
-UNKNOWN_CMD), events EVT_BUTTON/EVT_MODE. JOB_*, GET_STATS, RESET_STATS and ENTER_BOOTLOADER
-return `ERROR UNKNOWN_CMD` with detail `0x0001` (not implemented yet).
+UNKNOWN_CMD), events EVT_BUTTON/EVT_MODE. JOB_*, SET_POLICY, GET_POLICY, GET_STATS, RESET_STATS and
+ENTER_BOOTLOADER return `ERROR UNKNOWN_CMD` with detail `0x0001` (not implemented yet). The v0.2
+data model (sessions, FULL/DELTA, protected spans incl. session-persistent SYSTEM_PROMPT, per-session span table, policy TLV blob, JOB_END cache-stable report)
+is in `proto.h` with parsers/encoders in `proto.c`, host-tested; caps bit3 (`PROTO_CAP_SESSIONS`)
+stays clear until the handlers exist.
 
-## Bring-up checklist (none of this has run on hardware yet)
+## Bring-up checklist
 
-1. UART log on TP1 (115200 8N1): banner, `part=`, `core=`, `fuse_sg=`, `dcdc_trg=`.
-2. Measure VDD_SOC: ~1.275 V (DVL6B@600) / ~1.225 V (CVL5B@528).
-3. LED pulses on USB traffic; `lsusb` shows `1fc9:fff0`; HELLO/PING round-trip from a libusb script.
-4. OLED splash, then mode screen; check orientation (`0xA1/0xC8` in `oled.c`) and contrast.
-5. Encoder direction (`TK_ENC_INVERT`) and steps per detent (`TK_ENC_STEPS_PER_DETENT`, 2 for EC11E18244A5).
-6. I2C SCL frequency on a scope (target <= 400 kHz; ~365 kHz expected).
-7. Watchdog: stall a task in a test build and confirm reset.
+Moved to [`docs/bringup_checklist.md`](docs/bringup_checklist.md): UART banner and VDD_SOC
+checks, W25Q64 SR2 (0x35) QE=1 check, ROM SDP + flashloader recovery (quad with QE setting, and
+a single-pad fallback), MCUXpresso Secure Provisioning path, USB/UI/watchdog checks.
+
+## OLED orientation
+
+PM enclosure decision (#30): the OLED module is mounted **rotated 180° to the user**, so
+`OLED_ROTATE_180` defaults to ON (CMake option, plus a `#ifndef OLED_ROTATE_180` default of 1 in
+`oled.h`). Rotation is defined relative to the **module-normal orientation**, not the SSD1315
+reset values. The option only changes two opcodes in the init sequence in `oled.c`; the
+framebuffer and drawing code are identical in both builds (no software flip).
+
+| `OLED_ROTATE_180` | Segment remap | COM scan direction | Result |
+|---|---|---|---|
+| ON (default) | `0xA0` (column 0 → SEG0) | `0xC0` (COM0 → COM63) | module-normal rotated 180°: upright in the enclosure |
+| OFF | `0xA1` (column 127 → SEG0) | `0xC8` (COM63 → COM0) | module-normal: upright for a bare module on the bench |
+
+Module-normal = `0xA1` + `0xC8`. Sources (fetched 2026-10-19 IST):
+
+- Adafruit_SSD1306 2.5.17 (`adafruit/Adafruit_SSD1306` master @ 4d19dfb747): `begin()` init3 sends
+  `SSD1306_SEGREMAP | 0x1, SSD1306_COMSCANDEC` (`Adafruit_SSD1306.cpp`; `SSD1306_SEGREMAP 0xA0`,
+  `SSD1306_COMSCANDEC 0xC8`, `SSD1306_COMSCANINC 0xC0 /* Not currently used */` in `Adafruit_SSD1306.h`).
+  Its 180° rotation (`setRotation(2)`) is done in software.
+- u8g2 `csrc/u8x8_d_ssd1306_128x64_noname.c` (`olikraus/u8g2` @ 0319996fef):
+  `..._flip0_seq` (normal, U8G2_R0) = `0x0a1, 0x0c8`; `..._flip1_seq` (180°, U8G2_R2) = `0x0a0, 0x0c0`.
+- Shenzhen Hansheng *HS96L03W2C03 Datasheet* VER 1.1 (LCSC C5248080), sample `OLED_Init()`:
+  `0xA1` "Set SEG/Column Mapping, 0xa0 左右反置 (mirrored L/R), 0xa1 正常 (normal)" and `0xC8`
+  "Set COM/Row Scan Direction, 0xc0 上下反置 (mirrored U/D), 0xc8 正常 (normal)". Read from the
+  search-indexed text of the PDF; LCSC's PDF link returns an HTML page to scripted downloads, so
+  the PDF itself was not downloaded.
+
+Confirm on the first assembled unit that the ON build reads upright in the enclosure (bring-up
+checklist U2).
 
 ## Flash notes
 
-- W25Q64JV quad read needs status register 2 `QE = 1`. The `-IQ` parts ship with QE=1; if a part
-  reads back QE=0, set it once (non-volatile) with the flashloader or J-Link before XIP boot.
+- W25Q64JV quad read needs status register 2 `QE = 1` (bit 1). The `-IQ` parts ship with QE=1;
+  check with `tools/w25q_status.py` and set it via the flashloader option word (checklist F2).
 - Internal loopback sampling limits the read clock. 50 MHz is a conservative choice; 60 MHz is the
   usual ceiling.

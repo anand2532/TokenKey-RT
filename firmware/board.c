@@ -78,20 +78,26 @@ static void pinmux_init(void)
 
 /* DVL6B 600 MHz "overdrive": VDD_SOC_IN 1.25..1.3 V (IMXRT1060CEC Table 10); SDK uses 1.275 V. */
 #define TK_DVL6B_SOC_MV   1275u
-/* CVL5B 528 MHz: industrial limit VDD_SOC_IN <= 1.26 V (IMXRT1060IEC); min 1.15 V. 1.225 V sits
- * 75 mV above min and 35 mV below max. Override with -DTK_CVL5B_SOC_MV=... if bench data says so. */
+/* CVL5B 528 MHz: VDD_SOC = 1.225 V, PM-approved setpoint (issue #30), inside the CVL5B
+ * VDD_SOC_IN limit of 1.26 V (IMXRT1060IEC); min 1.15 V. 1.225 V sits 75 mV above min and 35 mV
+ * below max. Override with -DTK_CVL5B_SOC_MV=... only with bench data; the guard below keeps
+ * any override at or below 1.25 V. */
 #ifndef TK_CVL5B_SOC_MV
 #define TK_CVL5B_SOC_MV   1225u
 #endif
 #if (TK_CVL5B_SOC_MV > 1250u) || (TK_CVL5B_SOC_MV < 1150u)
-#error "TK_CVL5B_SOC_MV must stay within 1.15..1.25 V (CVL5B limit 1.26 V)"
+#error "TK_CVL5B_SOC_MV must stay within 1.15..1.25 V (CVL5B limit 1.26 V; approved 1.225 V)"
 #endif
 
 #define ARM_PLL_DIV_600   100u /* 24 MHz * 100 / 2 = 1200 MHz, ARM_PODF /2 -> 600 MHz */
 #define ARM_PLL_DIV_528    88u /* 24 MHz *  88 / 2 = 1056 MHz, ARM_PODF /2 -> 528 MHz */
 
-/* OCOTP 0x440 (CFG3) [17:16] SPEED_GRADING: 01 = 500 MHz class (P/N code 5), 10 = 600 MHz
- * (P/N code 6), 00/11 reserved (IMXRT1060RM Rev.3 Fusemap, p.1301). */
+/* OCOTP 0x440 (CFG3) [17:16] SPEED_GRADING[1:0], "burned by tester program, for indicating IC
+ * core speed": 00 reserved, 01 = 500 MHz (P/N code 05), 10 = 600 MHz (P/N code 06), 11 reserved.
+ * Verified against NXP IMXRT1060RM Rev. 3, 07/2021, chapter 22 "Fusemap", section 22.3
+ * "Fusemap Descriptions Table", Table 22-9, p.1301 (fetched 2026-10-19 from
+ * https://www.pjrc.com/teensy/IMXRT1060RM_rev3.pdf). Shadow register: OCOTP->CFG3 at offset
+ * 0x440 (MIMXRT1062.h). Only 10 enables 600 MHz; 01, reserved codes or a bad read -> 528 MHz. */
 #define SPEED_GRADE_5     1u
 #define SPEED_GRADE_6     2u
 
@@ -126,12 +132,14 @@ static void clock_init(void)
     s_clk.fuse_speed_grade = fuse_speed_grade();
 #if defined(TK_PART_DVL6B) && TK_PART_DVL6B
     /* Build says DVL6B. Go to 600 MHz only if the fuses positively confirm the 600 MHz grade;
-     * anything else (500 class, reserved, unreadable) -> 528 MHz. */
+     * anything else (500 class, reserved, unreadable) -> 528 MHz guard @ 1.225 V (PM-approved,
+     * inside the CVL5B 1.26 V limit, so a mis-built CVL5B board is still in spec). */
     bool go600 = (s_clk.fuse_speed_grade == SPEED_GRADE_6);
     s_clk.fell_back = !go600;
 #else
-    /* Build says CVL5B: 528 MHz unconditionally, whatever the fuses read. The 600 MHz path is
-     * not even compiled in. */
+    /* Build says CVL5B: 528 MHz guard. 528 MHz unconditionally, whatever the fuses read; the
+     * 600 MHz path is not even compiled in. VDD_SOC = TK_CVL5B_SOC_MV = 1.225 V (PM-approved,
+     * inside the CVL5B 1.26 V limit). The 528 MHz fallback on DVL6B builds uses the same 1.225 V. */
     const bool go600 = false;
     s_clk.fell_back = false;
 #endif
