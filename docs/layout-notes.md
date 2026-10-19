@@ -65,23 +65,30 @@ Custom rules override these, so the floors sit at the BGA values and the staged 
 | Min track width | 0.09 mm | 0.09 mm (3 mil OK in BGA fan-out) | OK |
 | Min clearance | 0.09 mm | 0.09 mm | OK |
 | Min via annular ring | 0.075 mm | via dia = hole + 0.10 min / + 0.15 preferred | OK (preferred value) |
-| Min via diameter / hole | 0.35 / 0.20 mm | 0.25 / 0.15 min, 0.20 preferred hole | OK, **surcharge** (hole 0.2 with dia < 0.45) |
-| Min through-hole | 0.20 mm | 0.15 mm | OK |
+| Min via diameter / hole | 0.30 / 0.15 mm | 0.25 / 0.15 min, 0.20 preferred hole | OK, **surcharge** (0.15 hole at any diameter) |
+| Min through-hole | 0.15 mm | 0.15 mm | OK (at JLC minimum) |
 | Hole to hole | 0.25 mm | via 0.20 mm; **PTH pad 0.45 mm** | OK (pads raised to 0.45 by custom rule) |
-| Hole clearance (hole to copper) | 0.20 mm | via hole to track 0.20 mm | OK outside BGA; **exception in BGA** (§4.2) |
+| Hole clearance (hole to copper) | 0.20 mm | via hole to track 0.20 mm | OK everywhere, **no exception** (§4.2) |
 | Copper to edge | 0.30 mm | 0.20 mm routed | OK |
 | Silk to pad / min text | 0.15 mm / 1.0 mm high, 0.15 mm stroke | 0.15 mm / 1.0 mm | OK |
 | Soldermask | 1:1 expansion, min web 0.10 mm | 1:1, bridge 0.10 mm (green) | OK |
 
 ### 4.2 BGA area (MCU courtyard, MAPBGA196 10 × 10 mm, 0.65 mm pitch)
 
-**LOCKED (TokenKey PM, 2026-10-19):** BGA fan-out via **0.20 mm drill / 0.35 mm pad (0.075 mm annular ring)**, tracks and spaces **0.10 / 0.10 mm** between vias (the rule floor is 0.09 mm to absorb rounding).
+**LOCKED (TokenKey PM, 2026-10-19, supersedes the earlier 0.20/0.35 lock):** BGA fan-out via **0.15 mm drill / 0.30 mm pad (0.075 mm annular ring)**, tracks and spaces **0.10 / 0.10 mm** between vias (the rule floor is 0.09 mm to absorb rounding). TokenKey DFM confirmed that JLC's "Via hole to Track 0.2 mm" rule also applies inside the BGA fan-out, which the 0.20/0.35 via broke (0.175 mm).
 
-- **JLC small-via surcharge:** a 0.2 mm hole with pad < 0.45 mm costs more. PM accepted it as a cost item. The 0.45 mm no-surcharge pad does not fit at 0.65 mm pitch (DFM §3.2).
-- **Geometry:** dog-bone via in the diagonal gap. One 0.10 mm track between two adjacent vias leaves 0.10 mm copper clearance on each side (0.65 − 0.35 − 0.10 = 0.20 → 0.10 + 0.10). Only one track per channel.
-- **Hole-to-track exception (needed for DRC):** JLC lists "via hole to track 0.2 mm". A centred 0.10 mm track sits **0.175 mm** from each via hole edge ((0.65 − 0.10)/2 − 0.10). The staged rule `BGA via hole to track exception` lowers `hole_clearance` to **0.17 mm on outer layers inside the U1 courtyard only**. Inner layers keep 0.20 mm (JLC inner-layer via hole to copper 0.2 mm), so the L2/L3 plane antipads stay compliant.
-- **OPEN (TokenKey DFM):** DFM is still checking with JLC whether the 0.2 mm via-hole-to-track rule applies inside a BGA fan-out, where JLC explicitly allows 3 mil track/space. **Fallback:** JLC POFV via-in-pad (epoxy filled and capped, 0.20/0.35), which is a paid option on 4-layer boards. Escalate to PM before switching to POFV.
-- Hole to hole between adjacent BGA vias: 0.65 − 0.20 = 0.45 mm (≥ 0.25 OK). Aspect ratio 1.6 / 0.2 = 8:1.
+- **Geometry (0.65 mm pitch, dog-bone via in the diagonal gap, one centred 0.10 mm track per channel):**
+  - Via hole edge to track: (0.65 − 0.10)/2 − 0.075 = **0.200 mm**, which meets JLC's 0.2 mm rule with no exception.
+  - Via pad to track: (0.65 − 0.10)/2 − 0.15 = **0.125 mm** (≥ 0.09 BGA / 0.10 general).
+  - Via pad to via pad: 0.65 − 0.30 = 0.35 mm, so only one track per channel.
+  - Via hole to via hole: 0.65 − 0.15 = 0.50 mm (≥ 0.25).
+  - Annular ring 0.075 mm is JLC's preferred value (hole + 0.15).
+- **No hole-to-track exception.** The staged `.kicad_dru` applies the 0.20 mm `hole_clearance` everywhere, on all layers. The earlier 0.17 mm BGA exception is removed. **No POFV needed.**
+- **JLC surcharge:** a 0.15 mm hole costs extra at any pad size. DFM reports that 0.15 and 0.20 mm drills with a pad < 0.45 mm fall in the **same JLC small-via surcharge group**. The exact price difference is **pending** a live quote.
+- **Drill / aspect ratio:** 0.15 mm is JLC's **minimum** multilayer drill (0.15/0.25), so there is no margin below it. Aspect ratio 1.6 / 0.15 = **10.7:1**. JLC's capabilities page doesn't publish a maximum aspect ratio, so **TBD (DFM):** confirm in the quote / DFM review that 10.7:1 at 1.6 mm is accepted with no extra charge or yield note. JLC's 0.1 mm holes are only offered on boards ≤ 1.0 mm thick, which doesn't apply here.
+- **JLC quote (DFM, 2026-10-19):** 4 L, 50 × 50 mm, qty 5, 1.6 mm, JLC04161H-3313, impedance on. 0.15/0.30 vias come to **≈ $89.96**, against **$59.03** for the 0.3/0.45 default. The difference is a small-via line (≈ $17), an auto-added 4-wire Kelvin test (≈ $17) and Tg155 (≈ $3). Build time 3–4 days. 0.15 costs no more than 0.20.
+- **Via covering (OPEN, DFM confirming before release):** JLC disables "Tented" once a stackup and impedance control are selected. Untented dog-bone vias next to BGA pads risk solder wicking, so we want soldermask-covered vias, or plugged/epoxy-filled if JLC requires that. **In KiCad, set the BGA vias to tented on both sides** (via properties, front and back), so the mask Gerbers show covered vias whatever the order option.
+- Rejected alternative, kept for the record: 0.20/0.35 needed a 0.17 mm hole-to-track exception that JLC would flag.
 - Never put unfilled vias in BGA pads.
 
 ### 4.3 Outside the BGA
@@ -94,10 +101,10 @@ Custom rules override these, so the floors sit at the BGA values and the staged 
 
 | Net class | Track | Clearance | Via (dia/hole) | Diff gap | Pattern(s) | Notes |
 |---|---|---|---|---|---|---|
-| **Default** | 0.15 mm | 0.15 mm | 0.60 / 0.30 | — | (everything else) | DFM proposes 0.20 mm track as the cost floor; 0.15 is still standard at JLC |
-| **Power** | 0.30 mm (0.40 preferred) | 0.20 mm | 0.60 / 0.30 | — | `VDD*`, `3V3`, `/3V3`, `VBUS`, `/VBUS`, `DCDC*`, `/DCDC*` | Pour where possible; check VBUS current |
-| **USB_HS** | **0.155 mm** | 0.50 mm to other nets | none (L1 only) | **0.20 mm** | `/USB_D*`, `/USB*_D[PN]` | 90 Ω diff, JLC-calculator values (§5) |
-| **BGA_Escape** | 0.10 mm (0.09 min) | 0.10 mm (0.09 min) | **0.35 / 0.20** | — | applied by area (U1 courtyard), not by net | Enforced by the custom rules in the `.kicad_dru` |
+| **Default** | 0.15 mm | 0.15 mm | 0.60 / 0.30 | — | (everything else) | **PM-approved** |
+| **Power** | 0.40 mm trunks (3V3/VBUS); 0.30 mm min for local branches | 0.20 mm | 0.60 / 0.30 | — | `VDD*`, `3V3`, `/3V3`, `VBUS`, `/VBUS`, `DCDC*`, `/DCDC*` | **PM-approved**. Pour where possible; check VBUS current |
+| **USB_HS** | **0.155 mm** | 0.50 mm to other nets | none (L1 only) | **0.20 mm** | `/USB_D*`, `/USB*_D[PN]` | **PM-approved**. 90 Ω diff, JLC-calculator values (§5) |
+| **BGA_Escape** | 0.10 mm (0.09 min) | 0.10 mm (0.09 min) | **0.30 / 0.15** | — | applied by area (U1 courtyard), not by net | **PM-locked** (§4.2). Enforced by the custom rules in the `.kicad_dru` |
 
 The net patterns assume hierarchical names like `/USB_DP`, `/USB_DN`. **The schematic bot should name the USB pair `USB_DP` / `USB_DN`** (KiCad's diff-pair detection needs a `P`/`N` or `+`/`-` suffix) and keep the power nets matching the patterns above. DFM's draft calls the BGA class `BGA_Fanout`; this file uses `BGA_Escape` per the PM brief.
 
@@ -123,7 +130,7 @@ Routing rules (also in the `.kicad_dru`): L1 only, **no vias**, intra-pair skew 
 ## 6. USB-C connector (notes only, no footprint yet)
 
 - Part: **TYPE-C-31-M-12** (Korean Hroparts), **LCSC C165948**, USB 2.0 16-pin SMD receptacle.
-- **Recommendation: south long edge (y = 40), centred under the BGA (x ≈ 17 mm).** The USB balls (DN M8 / DP L8) escape south, so a south-edge connector gives a straight pair about 12–15 mm long with no bends around other parts. A short-edge connector would need the BGA rotated 90° or a pair routed around the QSPI or crystal zone.
+- **DECIDED (TokenKey PM, 2026-10-19): south long edge (y = 40), centred under the BGA (x ≈ 17 mm).** The USB balls (DN M8 / DP L8) escape south, so a south-edge connector gives a straight pair about 12–15 mm long with no bends around other parts. A short-edge connector would need the BGA rotated 90° or a pair routed around the QSPI or crystal zone.
 - **USBLC6-2SC6** immediately behind the connector (about 2–3 mm), in the pair path. CC1/CC2 5.1 kΩ Rd next to the connector. VBUS input protection and the AP2112K-3.3 LDO near the connector's VBUS pins.
 - Check the shell-tab THT holes against §4.3 and the mounting-hole keepouts (H3/H4 keepouts end at x = 5.5 mm and x = 44.5 mm, so they don't clash with a connector centred at x ≈ 17).
 
@@ -156,8 +163,8 @@ Notes:
 
 1. **Fit:** on one 50 × 40 mm top side, OLED (27 × 27) + EC11 (~12 × 13 plus tabs) + BGA fan-out zone (~16 × 16) + USB-C (~9 × 8) only fit if the OLED module is stacked on headers over low parts, or the H2 corner hole/keepout is shared with the module's own mounting hole. Otherwise the board grows to about 60 × 40 mm (allowed: 50 × 40 is a target). Decide with the enclosure. **Resolved by PM, 2026-10-19:** keep 50 × 40 mm with the OLED on a header over parts no taller than 2.5 mm.
 2. **Enclosure:** not defined. It sets the mounting-hole positions, whether the holes are NPTH or plated (chassis GND), the board thickness (1.6 mm vs thinner), the USB-C overhang/recess, and the OLED window and encoder shaft height.
-3. **JLC via-hole-to-track in BGA fan-out** (§4.2): DFM confirming with JLC. If it is enforced, use POFV (paid on 4 L) or quote the 6-layer JLC06161H-3313 (free POFV) for comparison.
-4. **[decisions.md](decisions.md) still says "about 0.2 mm drill / 0.45 mm pad"** for the BGA via. The PM lock is 0.20 / 0.35. That row should be updated by PM.
+3. **BGA via 0.15/0.30** (§4.2): DFM to confirm the 10.7:1 aspect ratio, and **via covering** (JLC drops "Tented" with stackup + impedance; mask-covered vs plugged/epoxy-filled) before release.
+4. **[decisions.md](decisions.md) still says "about 0.2 mm drill / 0.45 mm pad"** for the BGA via. **Resolved, 2026-10-19:** decisions.md now records the PM-locked 0.15 mm drill / 0.30 mm pad (PR #16).
 5. **MCU refdes:** the staged rules assume `U1`. Confirm with the schematic.
 6. **Default net class 0.15 vs 0.20 mm** (brief vs DFM) and **Power 0.30 vs 0.40 mm**: PM to pick; neither affects JLC compliance. **Resolved by PM, 2026-10-19:** Default 0.15 mm; Power 0.40 mm trunk / 0.30 mm branch.
 7. **USB DP L8 escape** runs between N8/P8 and N9/P9 (32 kHz crystal balls). This needs a fan-out study before placement; the alternative is escaping DP via the column 6/7 channel past N6 (VBUS, DC).
@@ -167,4 +174,35 @@ Notes:
 
 - The staged rules file was parsed and checked with **kicad-cli 9.0.2** `pcb drc` on throwaway boards in `/tmp` (never committed). Results:
   - **Empty board** (50 × 40 R1 outline, 4 × M2 holes, 4-layer, the floors above): **0 violations, 0 unconnected**.
-  - **Rule test board** (U1 = a stand-in 0.65 mm-pitch TFBGA footprint, 0.20/0.35 vias at 0.65 mm with a 0.10 mm track between them; a 0.20/0.35 via outside the courtyard): the BGA vias and the track between them pass. With the hole-to-track exception removed, they fail `hole_clearance` 0.175 < 0.20 as expected. The out-of-courtyard 0.35/0.20 via is correctly flagged (annular 0.075 < 0.125, hole < 0.30, diameter < 0.60).
+  - **Rule test board** (U1 = a stand-in 0.65 mm-pitch TFBGA footprint, 0.20/0.35 vias with a 0.10 mm track; superseded by the 0.15/0.30 re-test in §12).
+
+## 10. Keep-under-OLED area (DECIDED: 50 × 40 mm, OLED on a header over low parts)
+
+- **Area:** the OLED module outline (27.3 × 27.3 mm for the Winstar WEA012864D-03 class, about 27.3 × 27.8 mm for generic modules) on F.Fab/F.Courtyard, placed as in the §7 zoning (≈ x 22–49, y 4–31). Inside it:
+  - **Max component height on top: 2.5 mm** (PM). KiCad has no height DRC, so enforce it by hand: put each footprint's 3D model / `height` field in the BOM review, and add a `User.Comments` note "KEEP-UNDER-OLED: max 2.5 mm" on the outline. The staged `.kicad_dru` has a comment block for this; it is not machine-checked.
+  - Allowed: 0402/0603 passives, SOT-23, SOIC-8, 2016/3225 crystals, ABS07. Not allowed: EC11, USB-C, electrolytics, tall inductors (the SWPA4020 is 2.0 mm, OK), TC2030 (bottom anyway), test hooks.
+  - The module's own back-side parts, if any, must clear the tallest part underneath. With a 2.5 mm standoff and 2.5 mm parts there is **zero margin**, so prefer ≤ 2.0 mm under the module, or use a taller header.
+- **Header footprint:** 1 × 4, 2.54 mm pitch THT (VCC, GND, SCL, SDA; check the module's pin order). It sits on the module edge inside the area, ≥ 0.30 mm hole-to-copper.
+
+## 11. Stack height (for the enclosure)
+
+| Item | Value | Source |
+|---|---|---|
+| PCB | 1.6 mm nominal (1.44–1.76) | JLC04161H-3313, JLC ±10 % |
+| Header standoff (male header plastic body) | 2.5 mm | Amtek 5PH1SDA25 "Pin Header 2.54 mm 1 Row H = 2.5 mm" (standard plastic) |
+| OLED module (PCB + COG glass) | 2.37 mm (Winstar WEA012864D-03 / Raystar REA012864D-03, 27.3 × 27.3 × 2.37 mm); range 1.41–2.72 mm across 0.96" SSD1306 modules | Winstar / Raystar product pages; Midas MDOB128064WV-YBI datasheet (2.72 mm) |
+| **Top of OLED above PCB top** | **≈ 4.9 mm** (2.5 + 2.37) | calculated |
+| **Overall, PCB bottom to OLED top** | **≈ 6.5 mm** (1.6 + 2.5 + 2.37), plus bottom-side parts (TBD, ~1–2 mm for the boot button) | calculated |
+| 1.3" 128 × 64 module (SH1106) | **TBD**: no datasheet thickness found. It is also about 35 × 33 mm, which doesn't fit the 27 × 27 zone | — |
+| EC11 encoder body / shaft | **TBD**: depends on the shaft length variant | — |
+
+Hobby "generic" 0.96" modules on 27.3 × 27.8 mm PCBs have no published thickness (**TBD**, measure a sample). The enclosure owner should design to the chosen module's datasheet.
+
+## 12. Netlist import and re-validation
+
+- **Netlist import waits for schematic PR #10.** No footprints are placed until it merges; then the board is created as `hardware/schematic/TokenKey-RT.kicad_pcb` and `TokenKey-RT.kicad_dru.staged` is renamed to `TokenKey-RT.kicad_dru`.
+- Re-validated with kicad-cli 9.0.2 on throwaway boards in `/tmp` (never committed), with the Board Setup via floor at 0.30/0.15 and hole clearance 0.20:
+  - Empty 50 × 40 board with 4 × M2: **0 violations**.
+  - **Positive:** 0.15/0.30 vias at 0.65 mm pitch inside the U1 courtyard, with a 0.10 mm track centred between them (0.200 mm hole-to-track, 0.125 mm pad-to-track): **pass**.
+  - **Negative:** the same track offset 0.03 mm towards one via (hole-to-track 0.170 mm) fails `hole_clearance` 0.20. Old 0.20/0.35 vias with a centred 0.10 track fail `hole_clearance` 0.175 < 0.20. A 0.30/0.15 via outside the courtyard is flagged (annular < 0.125, hole < 0.30, diameter < 0.60).
+
