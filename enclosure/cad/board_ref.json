@@ -1,5 +1,5 @@
 {
- "source_ref": "eb4495a",
+ "source_ref": "e2e5ff9",
  "board": {
   "size_mm": [
    50.1,
@@ -93,6 +93,25 @@
     15.525,
     28.015,
     17.475
+   ],
+   "tht": []
+  },
+  {
+   "ref": "L2",
+   "value": "4.7uH",
+   "fp": "L_3.0x3.0mm_TDK_VLS3015CX",
+   "pos": [
+    9.15,
+    21.4
+   ],
+   "rot": 180.0,
+   "side": "top",
+   "dnp": false,
+   "crtyd": [
+    7.255,
+    19.505,
+    11.045,
+    23.295
    ],
    "tht": []
   },
@@ -816,27 +835,8 @@
    "tht": []
   },
   {
-   "ref": "L2",
-   "value": "4.7uH",
-   "fp": "L_3.0x3.0mm_TDK_VLS3015CX",
-   "pos": [
-    9.15,
-    21.4
-   ],
-   "rot": 180.0,
-   "side": "top",
-   "dnp": false,
-   "crtyd": [
-    7.255,
-    19.505,
-    11.045,
-    23.295
-   ],
-   "tht": []
-  },
-  {
    "ref": "J2",
-   "value": "OLED 0.96in 128x64 I2C (SSD1315)",
+   "value": "Header 1x04 P2.54 H3.0 (OLED)",
    "fp": "PinHeader_1x04_P2.54mm_Vertical",
    "pos": [
     16.34,

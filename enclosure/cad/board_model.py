@@ -54,9 +54,9 @@ def oled_parts():
     b0, b1 = P.OLED_BACK_BAND
     out["OLED back feature (band)"] = kbox((mx0, py + b0, mx1, py + b1), zb - P.OLED_BACK_FEATURE, zb)
     cx = (mx0 + mx1) / 2
-    zmin = P.FPC_BEND_ZMIN if P.FPC_BEND_ZMIN is not None else zb - P.OLED_BACK_FEATURE
-    out["OLED FPC bend (conservative)"] = kbox((cx - P.FPC_BEND_W / 2, my1, cx + P.FPC_BEND_W / 2,
-                                               my1 + P.FPC_BEND_OUT), zmin, P.OLED_TOP)
+    # far edge = my1 (south, opposite the header at my0); bend stays inside the outline
+    out["OLED FPC bend"] = kbox((cx - P.FPC_BEND_W / 2, py + P.GLASS_Y[1], cx + P.FPC_BEND_W / 2,
+                                 my1 - (P.FPC_BEND_INSET - P.FPC_BEND_TOL)), zt, P.OLED_TOP)
     # header: plastic body + pins (trimmed) above the module
     out["J2 header body"] = kbox((px - 1.27, py - 1.27, px + 3 * 2.54 + 1.27, py + 1.27), 0, P.HEADER_H)
     pins = None
@@ -69,13 +69,11 @@ def oled_parts():
 
 def encoder():
     ax, ay = P.K(*P.ENC_AXIS_K)
-    bx, by, bh = P.ENC_BODY       # board x/y extents (footprint rot 90)
+    bx, by, bh = P.ENC_BODY       # no bushing: the shaft leaves the body top directly
     body = box(ax - bx / 2, ay - by / 2, 0, ax + bx / 2, ay + by / 2, bh)
-    bush = cyl(ax, ay, bh, P.ENC_BUSHING_TOP, P.ENC_BUSHING_D) if P.ENC_BUSHING_TOP > bh else None
-    shaft = cyl(ax, ay, bh, P.SHAFT_TOP, P.ENC_SHAFT_D).cut(
-        box(ax - 4, ay + P.ENC_FLAT / 2, P.SHAFT_TOP - P.ENC_FLAT_L, ax + 4, ay + 4, P.SHAFT_TOP + 1))
-    s = body.union(shaft)
-    return s.union(bush) if bush is not None else s
+    shaft = cyl(ax, ay, bh - 0.01, P.SHAFT_TOP, P.ENC_SHAFT_D).cut(
+        box(ax - 4, ay + P.ENC_FLAT / 2, P.FLAT_START, ax + 4, ay + 4, P.SHAFT_TOP + 1))
+    return body.union(shaft)
 
 
 def usb_c():

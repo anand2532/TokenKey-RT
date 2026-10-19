@@ -68,13 +68,13 @@ def run(parts, board):
                 rows.append(r)
     # board vs board: OLED module / FPC bend vs J1 USB-C body
     special = []
-    for b in ("OLED FPC bend (conservative)", "OLED module PCB", "OLED back feature (band)"):
+    for b in ("OLED FPC bend", "OLED module PCB", "OLED back feature (band)"):
         r = pair(b, bs[b], "J1 USB-C body", bs["J1 USB-C body"], near=100)
         r["kind"] = "board-board"
         r["status"] = "CLASH" if r["vol"] > 1e-3 or r["dist"] < P.CLASH_MIN else "ok"
         special.append(r)
     # plan (XY) clearance FPC bend -> USB body
-    fb, ub = bs["OLED FPC bend (conservative)"].BoundingBox(), bs["J1 USB-C body"].BoundingBox()
+    fb, ub = bs["OLED FPC bend"].BoundingBox(), bs["J1 USB-C body"].BoundingBox()
     plan = fb.ymin - ub.ymax   # CAD Y: bend is north of the USB body
     mb = bs["OLED module PCB"].BoundingBox()
     return rows, special, dict(fpc_plan_clearance=plan, module_plan_clearance=mb.ymin - ub.ymax)
@@ -83,7 +83,7 @@ def run(parts, board):
 def report(rows, special, extra):
     lines = ["# Interference check", "",
              f"Board ref {P.BOARD['source_ref']}; clash threshold {P.CLASH_MIN} mm; "
-             f"header {P.HEADER_H}, module {P.OLED_MODULE_T}, shaft {P.SHAFT_L}, knob H {P.KNOB_H}.", ""]
+             f"header {P.HEADER_H}, module {P.OLED_MODULE_T}, J2 y {P.J2_Y}, shaft tip {P.SHAFT_TOP}, knob H {P.KNOB_H}.", ""]
     bad = [r for r in rows if r["status"] in ("CLASH", "TIGHT")]
     lines.append(f"Pairs checked (bbox within 3 mm): {len(rows)}; CLASH/TIGHT: {len(bad)}")
     lines += ["", "| kind | A | B | min clearance (mm) | overlap (mm3) | status |", "|---|---|---|---|---|---|"]
@@ -96,10 +96,9 @@ def report(rows, special, extra):
     for r in special:
         lines.append(f"| {r['a']} | {r['b']} | {r['dist']:.2f} | {r['vol']:.3f} | {r['status']} |")
     lines += ["", f"- Module PCB edge -> USB-C body, plan: **{extra['module_plan_clearance']:+.2f} mm**",
-              f"- FPC bend ({P.FPC_BEND_OUT} mm past the module edge, {P.FPC_BEND_W} mm wide, down to "
-              f"z {P.HEADER_H - P.OLED_BACK_FEATURE:.2f}) -> USB-C body, plan: "
+              f"- FPC bend (far/south edge, {P.FPC_BEND_W} mm wide, {P.FPC_BEND_INSET} +- {P.FPC_BEND_TOL} mm "
+              f"inside the outline, no wrap; modelled at the worst case) -> USB-C body, plan: "
               f"**{extra['fpc_plan_clearance']:+.2f} mm** "
               f"({'CLASH (< %.1f mm)' % P.CLASH_MIN if extra['fpc_plan_clearance'] < P.CLASH_MIN else 'ok'})",
-              f"- The bend protrusion that still leaves {P.CLASH_MIN} mm: "
-              f"<= {P.FPC_BEND_OUT + extra['fpc_plan_clearance'] - P.CLASH_MIN:.2f} mm"]
+              f"- J2 pin-row y {P.J2_Y} (from board_ref {P.BOARD['source_ref']})"]
     return "\n".join(lines) + "\n", bad

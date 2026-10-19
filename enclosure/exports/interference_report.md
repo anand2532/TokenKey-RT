@@ -1,8 +1,8 @@
 # Interference check
 
-Board ref eb4495a; clash threshold 0.3 mm; header 3.0, module 2.65, shaft 20.0, knob H 14.0.
+Board ref e2e5ff9; clash threshold 0.3 mm; header 3.0, module 2.65, J2 y 5.0, shaft tip 24.5, knob H 16.5.
 
-Pairs checked (bbox within 3 mm): 310; CLASH/TIGHT: 0
+Pairs checked (bbox within 3 mm): 309; CLASH/TIGHT: 0
 
 | kind | A | B | min clearance (mm) | overlap (mm3) | status |
 |---|---|---|---|---|---|
@@ -22,12 +22,12 @@ Pairs checked (bbox within 3 mm): 310; CLASH/TIGHT: 0
 | part-board | light_pipe | D1 (LED) | 0.20 | 0.000 | fit/contact |
 | part-board | button_cap_btn1 | SW3 (SW) | 0.21 | 0.000 | fit/contact |
 | part-board | button_cap_btn2 | SW4 (SW) | 0.21 | 0.000 | fit/contact |
-| part-board | top_shell | SW2 EC11 body+shaft | 0.30 | 0.000 | ok |
 | part-board | top_shell | J1 USB-C body | 0.30 | 0.000 | ok |
 | part-board | bottom_tray | SW1 (SW) | 0.30 | 0.000 | ok |
 | part-board | top_shell | OLED glass | 0.35 | 0.000 | ok |
-| part-board | top_shell | OLED FPC bend (conservative) | 0.35 | 0.000 | ok |
+| part-board | top_shell | OLED FPC bend | 0.35 | 0.000 | ok |
 | part-board | ballast | C40 (C) | 0.35 | 0.000 | ok |
+| part-board | top_shell | SW2 EC11 body+shaft | 0.50 | 0.000 | ok |
 | part-board | bottom_tray | L1 (L DNP) | 0.50 | 0.000 | ok |
 | part-board | button_cap_btn1 | pcb | 0.50 | 0.000 | ok |
 | part-board | button_cap_btn2 | pcb | 0.50 | 0.000 | ok |
@@ -80,10 +80,10 @@ Rows with clearance >= 1.0 mm and no problem are omitted.
 
 | A | B | min 3-D clearance (mm) | overlap (mm3) | status |
 |---|---|---|---|---|
-| OLED FPC bend (conservative) | J1 USB-C body | 0.00 | 2.808 | CLASH |
+| OLED FPC bend | J1 USB-C body | 1.72 | 0.000 | ok |
 | OLED module PCB | J1 USB-C body | 1.24 | 0.000 | ok |
 | OLED back feature (band) | J1 USB-C body | 15.30 | 0.000 | ok |
 
 - Module PCB edge -> USB-C body, plan: **+1.24 mm**
-- FPC bend (1.5 mm past the module edge, 14.5 mm wide, down to z 2.00) -> USB-C body, plan: **-0.26 mm** (CLASH (< 0.3 mm))
-- The bend protrusion that still leaves 0.3 mm: <= 0.94 mm
+- FPC bend (far/south edge, 14.5 mm wide, 0.4 +- 0.2 mm inside the outline, no wrap; modelled at the worst case) -> USB-C body, plan: **+1.44 mm** (ok)
+- J2 pin-row y 5.0 (from board_ref e2e5ff9)
