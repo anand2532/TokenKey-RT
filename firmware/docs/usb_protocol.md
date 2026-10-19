@@ -66,7 +66,7 @@
 ## 7. Example exchanges
 ```
 H→D A5 01 01 00 0200 01 0010 crc      HELLO host_ver=1 max=4096
-D→H A5 01 81 00 0E00 01 00010000 00 5802 0010 04 01000000 crc   proto1 fw0.1.0 DVL6B 600MHz max4096 win4 caps=events
+D→H A5 01 81 00 0F00 01 00010000 00 5802 0010 04 01000000 crc   proto1 fw0.1.0 DVL6B 600MHz max4096 win4 caps=events
 
 H→D A5 01 10 01 0100 01 crc           SET_MODE Balanced
 D→H A5 01 90 01 0100 01 crc

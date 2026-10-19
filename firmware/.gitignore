@@ -1,0 +1,2 @@
+# CMake build trees (firmware, per-part and host-test builds)
+build*/
