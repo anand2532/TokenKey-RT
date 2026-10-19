@@ -1,0 +1,232 @@
+/*
+ * TokenKey RT - OLED driver: LPI2C1 master (polled), SSD1315/SSD1306 init, 1 KB framebuffer,
+ * 5x7 font. Only ui_task calls into this file.
+ *
+ * Module: HS HS96L03W2C03 (LCSC C5248080), SSD1315, 0.96" 128x64, I2C 0x3C, VCC 3.3 V,
+ * internal charge pump (no VCC/VBAT pin), external 4.7k pull-ups R14/R15 on the board.
+ */
+#include "oled.h"
+
+#include <string.h>
+
+#include "FreeRTOS.h"
+#include "task.h"
+
+#include "fsl_device_registers.h"
+
+#define OLED_ADDR  0x3Cu
+#define CTRL_CMD   0x00u /* Co=0, D/C#=0 */
+#define CTRL_DATA  0x40u /* Co=0, D/C#=1 */
+
+/* ---- LPI2C1 master ---------------------------------------------------------------------- */
+/* Functional clock 24 MHz (board.c: CSCDR2 LPI2C_CLK_SEL = OSC, PODF /1), prescaler /1 (MCFGR1.PRESCALE = 0).
+ * SCL low  = (CLKLO+1)/24M = 1.42 us (>= 1.3 us), SETHOLD 0.75 us (>= 0.6 us),
+ * DATAVD 0.21 us (<= 0.9 us). Period incl. SCL latency (filter 2 + rise time) ~ 66 clocks
+ * -> ~365 kHz with typical rise time, never above 400 kHz. */
+#define I2C_CLKLO   33u
+#define I2C_CLKHI   20u
+#define I2C_SETHOLD 17u
+#define I2C_DATAVD  4u
+#define I2C_FILT    2u
+#define TXFIFO      4u   /* LPI2C TX FIFO depth on RT1060 */
+
+#define MTDR_TX     (0u << 8)
+#define MTDR_STOP   (2u << 8)
+#define MTDR_START  (4u << 8)
+
+#define MSR_ERR     (LPI2C_MSR_NDF_MASK | LPI2C_MSR_ALF_MASK | LPI2C_MSR_FEF_MASK | LPI2C_MSR_PLTF_MASK)
+#define MSR_W1C     (LPI2C_MSR_EPF_MASK | LPI2C_MSR_SDF_MASK | MSR_ERR | LPI2C_MSR_DMF_MASK)
+
+static bool s_present;
+
+static void i2c_init(void)
+{
+    CCM->CCGR2 |= CCM_CCGR2_CG3_MASK; /* lpi2c1 */
+    LPI2C1->MCR = LPI2C_MCR_RST_MASK;
+    LPI2C1->MCR = 0;
+    LPI2C1->MCFGR1 = LPI2C_MCFGR1_PRESCALE(0);
+    LPI2C1->MCFGR2 = LPI2C_MCFGR2_FILTSDA(I2C_FILT) | LPI2C_MCFGR2_FILTSCL(I2C_FILT);
+    LPI2C1->MCCR0 = LPI2C_MCCR0_CLKLO(I2C_CLKLO) | LPI2C_MCCR0_CLKHI(I2C_CLKHI) |
+                    LPI2C_MCCR0_SETHOLD(I2C_SETHOLD) | LPI2C_MCCR0_DATAVD(I2C_DATAVD);
+    LPI2C1->MCR = LPI2C_MCR_MEN_MASK | LPI2C_MCR_DBGEN_MASK;
+}
+
+static void i2c_recover(void)
+{
+    LPI2C1->MCR |= LPI2C_MCR_RTF_MASK | LPI2C_MCR_RRF_MASK; /* flush FIFOs */
+    LPI2C1->MSR = MSR_W1C;
+    LPI2C1->MTDR = MTDR_STOP;
+}
+
+static bool i2c_push(uint32_t w, TickType_t t0)
+{
+    while (((LPI2C1->MFSR & LPI2C_MFSR_TXCOUNT_MASK) >> LPI2C_MFSR_TXCOUNT_SHIFT) >= TXFIFO) {
+        if ((LPI2C1->MSR & MSR_ERR) || (xTaskGetTickCount() - t0) > pdMS_TO_TICKS(50)) {
+            return false;
+        }
+    }
+    LPI2C1->MTDR = w;
+    return true;
+}
+
+/* One write transaction: START addr+W, ctrl byte, n data bytes, STOP. */
+static bool i2c_write(uint8_t ctrl, const uint8_t *d, size_t n)
+{
+    TickType_t t0 = xTaskGetTickCount();
+    LPI2C1->MSR = MSR_W1C;
+    bool ok = i2c_push(MTDR_START | (OLED_ADDR << 1), t0) && i2c_push(MTDR_TX | ctrl, t0);
+    for (size_t i = 0; ok && i < n; i++) {
+        ok = i2c_push(MTDR_TX | d[i], t0);
+    }
+    ok = ok && i2c_push(MTDR_STOP, t0);
+    while (ok && (LPI2C1->MSR & LPI2C_MSR_SDF_MASK) == 0u) {
+        if ((LPI2C1->MSR & MSR_ERR) || (xTaskGetTickCount() - t0) > pdMS_TO_TICKS(50)) {
+            ok = false;
+        }
+    }
+    if (!ok || (LPI2C1->MSR & MSR_ERR)) {
+        i2c_recover();
+        return false;
+    }
+    return true;
+}
+
+/* ---- SSD1315 / SSD1306 ------------------------------------------------------------------ */
+static const uint8_t k_init[] = {
+    0xAE,       /* display off */
+    0xD5, 0x80, /* clock divide / osc freq (reset value) */
+    0xA8, 0x3F, /* multiplex 1/64 */
+    0xD3, 0x00, /* display offset 0 */
+    0x40,       /* start line 0 */
+    0x8D, 0x14, /* charge pump ON (7.5 V) - required, the module has no external VCC */
+    0x20, 0x00, /* horizontal addressing */
+    0xA1,       /* segment remap: column 127 -> SEG0 */
+    0xC8,       /* COM scan remapped (flip vertically); with A1 = 180 deg vs. reset */
+    0xDA, 0x12, /* COM pins: alternative, no left/right remap (128x64 panels) */
+    0x81, 0xCF, /* contrast */
+    0xD9, 0xF1, /* pre-charge (charge-pump setting) */
+    0xDB, 0x40, /* VCOMH deselect */
+    0xA4,       /* display follows RAM */
+    0xA6,       /* normal (not inverted) */
+    0x2E,       /* scroll off */
+    0xAF,       /* display on */
+};
+
+static uint8_t s_fb[OLED_H / 8][OLED_W]; /* 1 KB, page-major as the controller stores it */
+static uint8_t s_dirty;                  /* bit p = page p needs flushing */
+
+bool oled_init(void)
+{
+    i2c_init();
+    vTaskDelay(pdMS_TO_TICKS(50)); /* VCC settle after power-up */
+    s_present = i2c_write(CTRL_CMD, k_init, sizeof k_init);
+    memset(s_fb, 0, sizeof s_fb);
+    s_dirty = 0xFF;
+    return s_present;
+}
+
+bool oled_present(void) { return s_present; }
+const uint8_t *oled_framebuffer(void) { return &s_fb[0][0]; }
+
+void oled_clear(void)
+{
+    memset(s_fb, 0, sizeof s_fb);
+    s_dirty = 0xFF;
+}
+
+void oled_pixel(int x, int y, bool on)
+{
+    if ((unsigned)x >= OLED_W || (unsigned)y >= OLED_H) {
+        return;
+    }
+    uint8_t m = (uint8_t)(1u << (y & 7));
+    uint8_t *p = &s_fb[y >> 3][x];
+    uint8_t v = on ? (uint8_t)(*p | m) : (uint8_t)(*p & ~m);
+    if (v != *p) {
+        *p = v;
+        s_dirty |= (uint8_t)(1u << (y >> 3));
+    }
+}
+
+void oled_fill_rect(int x, int y, int w, int h, bool on)
+{
+    for (int j = y; j < y + h; j++) {
+        for (int i = x; i < x + w; i++) {
+            oled_pixel(i, j, on);
+        }
+    }
+}
+
+bool oled_flush(void)
+{
+    if (!s_present) {
+        return false;
+    }
+    for (uint8_t p = 0; p < OLED_H / 8; p++) {
+        if (!(s_dirty & (1u << p))) {
+            continue;
+        }
+        const uint8_t win[] = {0x21, 0, OLED_W - 1, 0x22, p, p};
+        if (!i2c_write(CTRL_CMD, win, sizeof win) || !i2c_write(CTRL_DATA, s_fb[p], OLED_W)) {
+            return false;
+        }
+        s_dirty &= (uint8_t)~(1u << p);
+    }
+    return true;
+}
+
+/* ---- 5x7 font, ASCII 0x20..0x7E, column-major, bit0 = top row --------------------------- */
+static const uint8_t k_font[95][5] = {
+    {0x00, 0x00, 0x00, 0x00, 0x00}, {0x00, 0x00, 0x5F, 0x00, 0x00}, {0x00, 0x07, 0x00, 0x07, 0x00}, /*  !" */
+    {0x14, 0x7F, 0x14, 0x7F, 0x14}, {0x24, 0x2A, 0x7F, 0x2A, 0x12}, {0x23, 0x13, 0x08, 0x64, 0x62}, /* #$% */
+    {0x36, 0x49, 0x55, 0x22, 0x50}, {0x00, 0x05, 0x03, 0x00, 0x00}, {0x00, 0x1C, 0x22, 0x41, 0x00}, /* &'( */
+    {0x00, 0x41, 0x22, 0x1C, 0x00}, {0x14, 0x08, 0x3E, 0x08, 0x14}, {0x08, 0x08, 0x3E, 0x08, 0x08}, /* )*+ */
+    {0x00, 0x50, 0x30, 0x00, 0x00}, {0x08, 0x08, 0x08, 0x08, 0x08}, {0x00, 0x60, 0x60, 0x00, 0x00}, /* ,-. */
+    {0x20, 0x10, 0x08, 0x04, 0x02}, {0x3E, 0x51, 0x49, 0x45, 0x3E}, {0x00, 0x42, 0x7F, 0x40, 0x00}, /* /01 */
+    {0x42, 0x61, 0x51, 0x49, 0x46}, {0x21, 0x41, 0x45, 0x4B, 0x31}, {0x18, 0x14, 0x12, 0x7F, 0x10}, /* 234 */
+    {0x27, 0x45, 0x45, 0x45, 0x39}, {0x3C, 0x4A, 0x49, 0x49, 0x30}, {0x01, 0x71, 0x09, 0x05, 0x03}, /* 567 */
+    {0x36, 0x49, 0x49, 0x49, 0x36}, {0x06, 0x49, 0x49, 0x29, 0x1E}, {0x00, 0x36, 0x36, 0x00, 0x00}, /* 89: */
+    {0x00, 0x56, 0x36, 0x00, 0x00}, {0x08, 0x14, 0x22, 0x41, 0x00}, {0x14, 0x14, 0x14, 0x14, 0x14}, /* ;<= */
+    {0x00, 0x41, 0x22, 0x14, 0x08}, {0x02, 0x01, 0x51, 0x09, 0x06}, {0x32, 0x49, 0x79, 0x41, 0x3E}, /* >?@ */
+    {0x7E, 0x11, 0x11, 0x11, 0x7E}, {0x7F, 0x49, 0x49, 0x49, 0x36}, {0x3E, 0x41, 0x41, 0x41, 0x22}, /* ABC */
+    {0x7F, 0x41, 0x41, 0x22, 0x1C}, {0x7F, 0x49, 0x49, 0x49, 0x41}, {0x7F, 0x09, 0x09, 0x09, 0x01}, /* DEF */
+    {0x3E, 0x41, 0x49, 0x49, 0x7A}, {0x7F, 0x08, 0x08, 0x08, 0x7F}, {0x00, 0x41, 0x7F, 0x41, 0x00}, /* GHI */
+    {0x20, 0x40, 0x41, 0x3F, 0x01}, {0x7F, 0x08, 0x14, 0x22, 0x41}, {0x7F, 0x40, 0x40, 0x40, 0x40}, /* JKL */
+    {0x7F, 0x02, 0x0C, 0x02, 0x7F}, {0x7F, 0x04, 0x08, 0x10, 0x7F}, {0x3E, 0x41, 0x41, 0x41, 0x3E}, /* MNO */
+    {0x7F, 0x09, 0x09, 0x09, 0x06}, {0x3E, 0x41, 0x51, 0x21, 0x5E}, {0x7F, 0x09, 0x19, 0x29, 0x46}, /* PQR */
+    {0x46, 0x49, 0x49, 0x49, 0x31}, {0x01, 0x01, 0x7F, 0x01, 0x01}, {0x3F, 0x40, 0x40, 0x40, 0x3F}, /* STU */
+    {0x1F, 0x20, 0x40, 0x20, 0x1F}, {0x3F, 0x40, 0x38, 0x40, 0x3F}, {0x63, 0x14, 0x08, 0x14, 0x63}, /* VWX */
+    {0x07, 0x08, 0x70, 0x08, 0x07}, {0x61, 0x51, 0x49, 0x45, 0x43}, {0x00, 0x7F, 0x41, 0x41, 0x00}, /* YZ[ */
+    {0x02, 0x04, 0x08, 0x10, 0x20}, {0x00, 0x41, 0x41, 0x7F, 0x00}, {0x04, 0x02, 0x01, 0x02, 0x04}, /* \]^ */
+    {0x40, 0x40, 0x40, 0x40, 0x40}, {0x00, 0x01, 0x02, 0x04, 0x00}, {0x20, 0x54, 0x54, 0x54, 0x78}, /* _`a */
+    {0x7F, 0x48, 0x44, 0x44, 0x38}, {0x38, 0x44, 0x44, 0x44, 0x20}, {0x38, 0x44, 0x44, 0x48, 0x7F}, /* bcd */
+    {0x38, 0x54, 0x54, 0x54, 0x18}, {0x08, 0x7E, 0x09, 0x01, 0x02}, {0x0C, 0x52, 0x52, 0x52, 0x3E}, /* efg */
+    {0x7F, 0x08, 0x04, 0x04, 0x78}, {0x00, 0x44, 0x7D, 0x40, 0x00}, {0x20, 0x40, 0x44, 0x3D, 0x00}, /* hij */
+    {0x7F, 0x10, 0x28, 0x44, 0x00}, {0x00, 0x41, 0x7F, 0x40, 0x00}, {0x7C, 0x04, 0x18, 0x04, 0x78}, /* klm */
+    {0x7C, 0x08, 0x04, 0x04, 0x78}, {0x38, 0x44, 0x44, 0x44, 0x38}, {0x7C, 0x14, 0x14, 0x14, 0x08}, /* nop */
+    {0x08, 0x14, 0x14, 0x18, 0x7C}, {0x7C, 0x08, 0x04, 0x04, 0x08}, {0x48, 0x54, 0x54, 0x54, 0x20}, /* qrs */
+    {0x04, 0x3F, 0x44, 0x40, 0x20}, {0x3C, 0x40, 0x40, 0x20, 0x7C}, {0x1C, 0x20, 0x40, 0x20, 0x1C}, /* tuv */
+    {0x3C, 0x40, 0x30, 0x40, 0x3C}, {0x44, 0x28, 0x10, 0x28, 0x44}, {0x0C, 0x50, 0x50, 0x50, 0x3C}, /* wxy */
+    {0x44, 0x64, 0x54, 0x4C, 0x44}, {0x00, 0x08, 0x36, 0x41, 0x00}, {0x00, 0x00, 0x7F, 0x00, 0x00}, /* z{| */
+    {0x00, 0x41, 0x36, 0x08, 0x00}, {0x10, 0x08, 0x08, 0x10, 0x08},                                  /* }~  */
+};
+
+int oled_text(int x, int y, const char *s, int scale, bool inv)
+{
+    if (scale < 1) {
+        scale = 1;
+    }
+    for (; *s; s++) {
+        uint8_t c = (uint8_t)*s;
+        const uint8_t *g = k_font[(c >= 0x20 && c <= 0x7E) ? c - 0x20 : '?' - 0x20];
+        for (int col = 0; col < 6; col++) {
+            uint8_t bits = col < 5 ? g[col] : 0;
+            for (int row = 0; row < 8; row++) {
+                bool on = ((bits >> row) & 1u) != inv;
+                oled_fill_rect(x + col * scale, y + row * scale, scale, scale, on);
+            }
+        }
+        x += 6 * scale;
+    }
+    return x;
+}

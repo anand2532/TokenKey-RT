@@ -14,7 +14,7 @@
 | ENC_SW | L12 | GPIO_AD_B1_04 (GPIO1_IO20) | ALT5 GPIO |
 | BTN1 | K12 | GPIO_AD_B1_05 (GPIO1_IO21) | ALT5 GPIO |
 | BTN2 | J12 | GPIO_AD_B1_06 (GPIO1_IO22) | ALT5 GPIO |
-| LED | K10 | GPIO_AD_B1_07 (GPIO1_IO23) | ALT5 GPIO |
+| LED | H13 | GPIO_AD_B1_08 (GPIO1_IO24) — moved from K10 per docs/pin-map.md | ALT5 GPIO |
 | UART TX | K14 | GPIO_AD_B0_12 | ALT2 LPUART1_TX |
 | UART RX | L14 | GPIO_AD_B0_13 | ALT2 LPUART1_RX |
 | SWO | G13 | GPIO_AD_B0_10 | ALT0 ARM_TRACE_SWO (JTAG_TDO) |
@@ -68,6 +68,8 @@ Home (mode + last savings %), Mode select (encoder rotate, SW confirm), Stats, D
 FlexRAM split via GPR17/GPR16 set at startup (FCB/DCD not needed): ITCM 128 / DTCM 256 / OCRAM 128 (+ dedicated 512 KB OCRAM2 at 0x2020_0000 range for large rings; adjust). D-cache on; USB buffers in non-cacheable region.
 
 ## 4. Task / ISR model
+> Superseded: the firmware now uses FreeRTOS (static allocation) with usb/input/ui/status tasks and queues; see firmware/README.md "Tasks and data flow". The table below is the original superloop draft.
+
 Bare-metal superloop + ISRs (no RTOS initially).
 | Priority | Source | Work |
 |---|---|---|
