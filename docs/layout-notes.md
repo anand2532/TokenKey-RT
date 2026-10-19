@@ -210,14 +210,14 @@ Drawing coordinates are from header pin 1 (GND, the square pad). +x runs toward 
 | Item | Value | Source |
 |---|---|---|
 | PCB | 1.6 mm nominal (1.44–1.76) | JLC04161H-3313, JLC ±10 % |
-| Header standoff (male header plastic body) | **3.0 mm** (DECIDED, PM, issue #31; was 2.5 mm) | 1.0 mm module back-side block at an unknown x needs 3.0 − 1.0 = 2.0 mm real gap (§10). Part number: Schematic follow-up |
+| Header standoff (J2 machined socket insulator, XFCN MF254V-11-04-0743, #36/#45) | **3.0 mm** (DECIDED, PM, issues #31/#45; was 2.5 mm) | 1.0 mm module back-side block at an unknown x needs 3.0 − 1.0 = 2.0 mm real gap (§10). Part number: Schematic follow-up |
 | OLED module (PCB + COG glass) | 2.37 mm (Winstar WEA012864D-03 / Raystar REA012864D-03, 27.3 × 27.3 × 2.37 mm); range 1.41–2.72 mm across 0.96" SSD1306 modules | Winstar / Raystar product pages; Midas MDOB128064WV-YBI datasheet (2.72 mm) |
 | HS96L03W2C03 module (chosen part) | 2.65 mm nominal; **design to 3.6 mm** | TokenKey Schematic, from the HS96L03W2C03 drawing |
 | **Top of OLED above PCB top (enclosure number)** | **≈ 6.6 mm** (3.0 mm header + about 3.6 mm module) | calculated (issue #31) |
 | **Overall, PCB bottom to OLED top** | **≈ 8.2 mm** (1.6 + 3.0 + 3.6), plus bottom-side parts (TBD, ~1–2 mm for the boot button) | calculated (issue #31) |
 | Earlier estimate (Winstar-class module, 2.37 mm) | 4.9 mm above PCB top / 6.5 mm overall | superseded |
 | 1.3" 128 × 64 module (SH1106) | **TBD**: no datasheet thickness found. It is also about 35 × 33 mm, which doesn't fit the 27 × 27 zone | — |
-| EC11 encoder body / shaft | **15 mm shaft** (PM enclosure review, issue #31). Schematic keeps the same footprint (`RotaryEncoder_Alps_EC11E-Switch_Vertical_H20mm`), so no board change | PM / Schematic |
+| EC11 encoder body / shaft | **EC11E18244A5, 20 mm shaft** (PM, issue #45; the 15 mm swap from issue #31 is cancelled because knob engagement would be too short). Schematic keeps the same footprint (`RotaryEncoder_Alps_EC11E-Switch_Vertical_H20mm`), so no board change | PM / Schematic |
 
 Hobby "generic" 0.96" modules on 27.3 × 27.8 mm PCBs have no published thickness (**TBD**, measure a sample). The enclosure owner should design to the chosen module's datasheet.
 
