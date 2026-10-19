@@ -1,0 +1,30 @@
+# KiCad 7/8 backups, autosaves, locks and caches
+*-backups/
+*.bak
+*.bck
+*.kicad_pcb-bak
+*.kicad_sch-bak
+*-bak
+_autosave-*
+*.lck
+~*.lck
+fp-info-cache
+*.kicad_prl
+*-cache.lib
+*.tmp
+
+# OS / editor junk
+.DS_Store
+*.swp
+.vscode/
+
+# Firmware / software build output
+build/
+*.o
+*.elf
+*.map
+__pycache__/
+.venv/
+node_modules/
+
+# NOTE: fab/ outputs are intentionally tracked; do not ignore them.
