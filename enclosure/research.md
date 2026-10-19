@@ -33,7 +33,8 @@
    - Window **22.74 × 11.86 mm**, centred at J2 pin 1 + (3.81, 10.36).
    - **Design OLED top 6.6 mm** above the PCB (3.0 mm header + 3.6 mm module allowance); nominal 5.65 mm.
    - Gap from the module to the USB-C body: **+0.74 mm** with J2 at y 5.5 (main), **+1.24 mm** with J2 at y 5.0 (asked of Layout).
-7. **Recommendation: Direction A, a flat two-shell "puck" with screws through the four M2 holes.** It has a **bottom service hatch** over the TC2030 and the UART pads, and a **BOOT pinhole**. Wedge (B) and open-plate (C) variants can share the same PCB interface.
+7. **PM review (2026-10-19): Direction A approved.** The cable exits at the rear (board south edge), the OLED is rotated 180° in firmware, and the EC11 has a 15 mm shaft. See the Decisions section, which also lists one new conflict: knob height vs. shaft length.
+8. **Recommendation: Direction A, a flat two-shell "puck" with screws through the four M2 holes.** It has a **bottom service hatch** over the TC2030 and the UART pads, and a **BOOT pinhole**. Wedge (B) and open-plate (C) variants can share the same PCB interface.
 
 ---
 
@@ -111,12 +112,14 @@ So the **1.0 mm back-feature / U6 clearance issue is resolved by the 3.0 mm head
 - **J2 at y 5.0 (asked of Layout):** far edge at 31.36, giving **+1.24 mm** (0.38 mm inside the courtyard). The module top edge is at 3.56 and the north holes at y 5.56, clear of the H1/H2 keepouts.
 - Measure the FPC bend on a sample in either case.
 
-**Orientation decision needed (PM / Anand).** With the OLED read header-up, J1 points at the user. The cable then runs toward the user's hand, and the knob ends up on the right with the buttons below it, near the user. There are three options:
-- **(a)** Keep the device as placed and use a 90° USB-C cable that exits sideways.
-- **(b)** Flip the display 180° in firmware so the cable goes out the back. The knob then moves to the user's left, with the buttons behind it.
-- **(c)** Change the PCB.
-
-This choice affects which face is "front" in every direction below. The dimensions below assume (a).
+**Orientation (decided, PM review).**
+- The USB-C cable exits at the **back**, away from the user. The **board's south edge (J1) is the rear of the device**, and the user faces the north edge.
+- Firmware rotates the OLED 180° using the SSD1315 segment/COM remap. No board change.
+- Seen by the user:
+  - the knob (EC11) is on the **left**;
+  - BTN1/BTN2 sit **behind** the knob, toward the rear;
+  - the status LED D1 is at the front, right of the knob;
+  - the TC2030/UART service hatch is under the front half.
 
 ## 2. What users like and dislike in similar products
 
@@ -193,17 +196,22 @@ Common to all three directions:
   - Keep the lid above J3 free of ribs (≥ 3 mm clear) so the guide pins can poke through.
   - Hands-free TC2030-CLIP use needs the top shell removed.
 - **Light pipe for D1:** Ø2 mm clear PC or PMMA rod, ~8 mm long (LED top at ~0.8 mm, lid top at 8.5 mm), at (36.5, 7.6). For a quick prototype, a 0.6 mm thinned translucent wall printed in clear SLA also works.
-- **Knob:** **Ø16–18 mm, ~12 mm tall**, aluminium or SLA. Knurled or ribbed sides, a D-bore plus set screw, and a ≥ 2 mm skirt gap above the lid so the 1.5 mm push travel doesn't bottom out.
+- **Knob:** **Ø16–18 mm**, aluminium or SLA, on the **15 mm EC11 shaft** (PM). Knurled or ribbed sides, a D-bore plus set screw, and a ≥ 2 mm axial gap above the lid so the 1.5 mm push travel doesn't bottom out.
+  - **Bearing step:** the knob's inner skirt runs **radially** on a lid collar around the M7 bushing, with 0.10–0.15 mm radial clearance, to stop wobble.
+  - Don't make it an axial face: that would block the push. Knob height: see the Decisions section (conflict).
   - At Ø18 it stays clear of the OLED window (right edge x 31.52) and D1 (11.3 mm from the axis).
   - It also stays ~3 mm clear in plan of the button caps (12.5 mm south of the axis).
-- **Buttons:** SLA caps **Ø5 mm**, 0.8 mm proud of the lid, on a ~7.5 mm stem (lid top 8.5 + 0.8 − B3U top 1.6 − 0.2 free travel), with 0.2 mm free travel above the B3U. Use a different texture per cap (concave vs. dot) plus laser or printed icons.
-  - ⚠ The B3U's 0.15 mm pretravel will feel like a "dead" click through a printed cap. Ask Layout about a bigger tact switch (e.g. 4 × 4 or 6 × 6 mm) if G4 user testing goes ahead.
+- **Buttons (B3U kept, PM):** printed plunger caps with a **defined travel**.
+  - SLA cap Ø5 mm, 0.8 mm proud of the lid, on a ~7.5 mm stem (lid top 8.5 + 0.8 − B3U top 1.6 − 0.2 free travel).
+  - Free travel 0.2 mm, then the B3U's 0.15 (+0.2/−0.1) mm pretravel. A cap shoulder hits a lid hard stop **0.15 mm past the nominal operating point**, giving ~0.5 mm total travel and keeping the switch well under its 30 N maximum.
+  - Retention: a captive flange under the lid, or flexure arms for a print-in-place variant. Use a different texture per cap (concave vs. dot) plus icons.
+  - Revisit after the first print fit check.
 - **OLED:** window 22.74 × 11.86 mm at J2 pin 1 + (3.81, 10.36), chamfered through the lid to ~25.7 × 14.9 mm at the outer face. Lid datum posts at the four module holes. Header h = 3.0. Lid underside at **7.0 mm above the PCB** (design OLED top 6.6 + 0.4), lid top at 8.5 mm (see §1.1).
-- **Bottom clearance:** 2.5 mm (DNP L1 2.0 mm + 0.5 mm), assuming THT tails are trimmed to ≤ 1.5 mm.
-- **Mass and grip:** steel or brass ballast plus a silicone grip ring or 4 × Ø8 mm feet.
+- **Bottom clearance:** 2.5 mm (DNP L1 2.0 mm + 0.5 mm). THT tails are trimmed to ≤ 1.5 mm (PM).
+- **Mass and grip (design parameters, no purchases):** steel or brass ballast plus a silicone grip ring or 4 × Ø8 mm feet.
   - Rough estimate: resisting a 17 mN·m detent torque with friction alone (μ ≈ 0.8, r ≈ 18 mm) needs **~120 g**. This is an assumption; the user's finger pressure helps.
 
-### Direction A: flat "Puck" clamshell *(recommended)*
+### Direction A: flat "Puck" clamshell *(recommended; approved by PM)*
 - **Envelope:** **55 × 45 mm**, 3.5 mm outer corner radius. Body height **≈ 14.2 mm**: floor 1.6 + clearance 2.5 + PCB 1.6 + 7.0 (design OLED top 6.6 + 0.4) + top 1.5. That is +1.0 mm over the previous draft.
   - The PCB top sits 5.7 mm off the desk, so a 15 mm shaft tops out at 20.7 mm (20 mm shaft: 25.7 mm). Knob height is covered in the Decisions section.
 - **Walls:** 2.0 mm on FDM, 1.6 mm on SLA. 0.5 mm PCB-to-wall gap, located by the bosses.
@@ -214,11 +222,11 @@ Common to all three directions:
 - **Cons:** light; flat view of the OLED; little room for ballast.
 
 ### Direction B: tilted "Wedge"
-- **Envelope:** **58 × 48 mm**. The top face tilts **10°** down toward the user. Front height ~14.2 mm, back ~22.7 mm (14.2 + 48 · tan 10°).
+- **Envelope:** **58 × 48 mm**. The top face tilts **10°** down toward the user, with the low edge at the board's north edge. Front height ~14.2 mm, back ~22.7 mm (14.2 + 48 · tan 10°), with the USB-C on the tall rear face.
 - **Inside:** the back cavity under the PCB takes a **~6 mm steel ballast block (~60–80 g)**, reaching the ≥ 100 g target. Full-perimeter silicone grip ring.
 - **Construction:** the same PCB/top-shell interface, hatch and pinhole as A. Only the bottom tray changes, so B can be **a drop-in tray swap for A**.
 - **Pros:** better OLED view and knob angle; stable; makes room for the stand look that Stream Deck users like [S6][S8].
-- **Cons:** about 2× the print time; a larger footprint; the USB-C opening sits on an angled front face (keep the pocket perpendicular to J1).
+- **Cons:** about 2× the print time; a larger footprint; the USB-C pocket on the tilted rear face must stay perpendicular to J1.
 
 ### Direction C: open "Sandwich" (bring-up / G4 test rig)
 - **Envelope:** 54 × 44 mm. A 2 mm smoked acrylic or SLA top plate and a 2 mm bottom plate on 4 × M2 standoffs (top 8 mm so it clears the 6.6 mm design OLED top; bottom 3 mm). The sides are open.
@@ -231,19 +239,44 @@ Common to all three directions:
 1. Prototype **Direction A** in FDM PETG/ASA, with an SLA top shell, knob and caps, as `enclosure/` v0.1 once the spend gate allows it.
 2. Make the **bottom tray a swappable interface**, so the **B wedge tray** can be printed later if G4 users want more grip or tilt.
 3. Use **C** only for bench bring-up.
-4. **Open decisions before CAD:**
-   1. **Orientation / cable exit (PM / Anand):** (a) a 90° cable, (b) a firmware 180° display flip with the cable out the back, or (c) a PCB change (§1).
-   2. **OLED (narrowed; PR #25 resolved the module drawing).** Still open:
-      1. **Layout: commit J2 at y ≤ 5.5, preferably 5.0**, for USB-C clearance.
-      2. **Standoff h:** recommend 3.0 mm (2.5 mm header + 0.5 mm shim).
-      3. **Measure a sample:** where and how big the 1.0 mm back-side feature is, and how far the FPC bend sticks out.
-      4. **Confirm the AA x position**, which is not dimensioned.
-      5. **Merge order:** PR #25 is based on the old "Board" row (2.5 mm keep-under), while PR #23 says 2.0 mm. Watch for the conflict.
-   3. **EC11 shaft length:** 15 mm (EC11E15244G1, knob top ≈ 21 mm) vs. 20 mm as placed (≈ 26 mm).
-   4. **THT tails** trimmed to ≤ 1.5 mm on the bottom (EC11, J1 tabs, J2).
-   5. **User buttons:** keep the B3U (0.15 mm pretravel) or move to a larger tact switch.
-   6. **H1–H4** stay NPTH (no chassis-GND contact): confirm.
-   7. **OLED retention:** lid datum posts (prototype) vs. a screwed module on a connector (production).
+4. CAD follows under a **new issue**, not in this branch.
+
+## Decisions (PM review, 2026-10-19)
+
+Direction A (the puck) is **approved**. The PM answered the open decisions as follows:
+
+| # | Topic | Decision | Effect on the enclosure |
+|---|---|---|---|
+| 1 | J2 position | Layout is being asked to put J2 at **y ≤ 5.0** | USB-C plan clearance goes from +0.74 to **+1.24 mm**; window centre moves to (20.15, 15.36). Tie the CAD to J2 pin 1 |
+| 2 | Cable exit / orientation | USB-C exits at the **back**; firmware rotates the OLED 180° (SSD1315 seg/COM remap); no board change. The **board's south edge is the rear** | Knob on the user's left, buttons behind it, D1 at the front. The USB-C pocket goes on the rear face (B: the tall face) |
+| 3 | EC11 shaft | **15 mm shaft** (EC11E15244G1 or equivalent). The knob is designed for 15–25 mm height, with a bearing step against the housing | The shaft top is 15 mm above the PCB (20.7 mm above the desk). Bearing step is radial (see Knob). **See conflict below** |
+| 4 | THT leads | Trimmed to **≤ 1.5 mm** | Bottom clearance stays at 2.5 mm |
+| 5 | User buttons | **Keep B3U**, with printed plunger caps giving a defined travel; revisit after a print fit check | Caps as specified above |
+| 6 | M2 holes | Stay **NPTH** (no chassis-GND contact) | Plain screw bosses; no contact spring |
+| 7 | Under the OLED | Max **2.0 mm** height under the OLED, with a **3.0 mm header** | Design OLED top 6.6 mm. U6 clearance resolved |
+| — | Weight and grip | The ~120 g target and the grip ring stay **design parameters**; no purchases | Keep the ballast pocket and the grip-ring groove in CAD |
+
+**Still open or new:**
+1. **⚠ Conflict: knob height vs. 15 mm shaft.**
+   - The knob bottom must sit ≥ 2.0 mm above the lid top (8.5 mm) for the 1.5 mm push, so at ~10.5 mm above the PCB. A 15 mm shaft then engages only **4.5 mm** of the knob bore. Aim for ≥ 6 mm to avoid wobble.
+   - A knob that just covers the shaft is about **6 mm tall** (top ≈ 16.2 mm above the PCB, ≈ 22 mm above the desk). That is below the 15–25 mm knob height.
+   - A **15 mm-tall knob** puts its top at ≈ 25.5 mm above the PCB (**≈ 31 mm above the desk**) whatever the shaft length. That needs the 20 mm shaft (9.5 mm engagement).
+   - **PM to choose:**
+     - (a) a 15 mm shaft with a short (~6–8 mm) knob;
+     - (b) the 20 mm shaft with a 15 mm knob;
+     - (c) a 15 mm shaft with a deeper lid well (gains ≤ ~1 mm, limited by the EC11 body).
+2. **Board L2 footprint** is still SWPA4020 (2.0 mm, zero margin under a 1.0 mm back feature) until the VLS3015CX from PR #25 is synced to the board.
+3. **EC11 part change** (BOM, schematic, 3D model): the board and schematic still say EC11E18244A5 with the `..._H20mm` model.
+   - The land pattern is the same EC11E vertical-with-switch footprint.
+   - Check the detent/pulse count of the 15 mm part against the firmware: the 18244A5 is 36 detents / 18 pulses.
+4. **Docs outside `enclosure/` to update (Layout / PM):**
+   - layout-notes §11 still says OLED top ≈ 6.1 mm with a 2.5 mm header.
+   - decisions.md doesn't yet record the 3.0 mm header / 6.6 mm design height, the rear cable exit, or the 15 mm shaft.
+5. **Measure a sample module:**
+   - the 1.0 mm back-feature location (if it is really on the back, the lid can drop by up to 0.95 mm);
+   - how far the FPC bend sticks out (USB-C plan clearance);
+   - the AA x position.
+6. **OLED retention:** lid datum posts for the prototype; screwed module plus connector deferred to production.
 
 ## Sources
 - [S1] Core77, "Extra UI for Your Computer: The Creator Micro": https://www.core77.com/posts/133626/Extra-UI-for-Your-Computer-The-Creator-Micro
