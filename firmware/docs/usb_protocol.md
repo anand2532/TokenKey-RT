@@ -135,11 +135,32 @@ CRC bytes shown as `crc`; generate with reference implementation in `proto/crc16
 - `span_count` ≤ 16 (`PROTO_MAX_SPANS`, more → CTX_OVERFLOW). Each span {offset u32, len u32,
   kind u8}: len > 0, inside `total_len`, sorted by offset, non-overlapping (else BAD_PARAM,
   detail `0x0100 | span index`).
-- kinds: `0 TASK`, `1 LATEST_TOOL_OUTPUT`, `2 OTHER`.
+- kinds: `0 TASK`, `1 LATEST_TOOL_OUTPUT`, `2 OTHER`, `3 SYSTEM_PROMPT`. Kinds 4..255 are
+  reserved for later minors (advertised by a caps bit); this version rejects them with
+  BAD_PARAM, detail `0x0100 | span index`.
 - Protected bytes are **never reduced**: the output contains each span byte-exact and in
   order. TASK and OTHER spans stay protected for the rest of the session; a
   LATEST_TOOL_OUTPUT span is protected only in the job that declares it (in later jobs it is
   ordinary tool output, subject to the policy and the cache-stable prefix rule).
+
+#### 8.3.1 SYSTEM_PROMPT (kind 3): session-persistent
+- Declared **only in a FULL job** (it is part of the request that starts the session). A
+  SYSTEM_PROMPT span in a DELTA job → BAD_PARAM, detail `0x0200 | span index`.
+- The device records every persistent span (TASK, OTHER, SYSTEM_PROMPT) in the session's
+  protected-span table (`proto_session_span_t`, ≤ 32 per session; more → CTX_OVERFLOW) in
+  **session coordinates**: offset in the concatenated session input since the last FULL
+  (`in_len_at_job_start + span.offset`).
+- Later DELTA jobs do not re-send the system prompt (it lies inside the already-sent,
+  cache-stable prefix), but it **stays protected**: it is never reduced, even when the policy's
+  `CACHE_STABLE_PREFIX` is smaller than the span's end and older history may be re-reduced.
+- **FULL reset:** a FULL job drops the whole span table, SYSTEM_PROMPT included, before
+  recording the new job's spans. The host must declare SYSTEM_PROMPT again in every FULL.
+- **SESSION_MISMATCH:** the rejected DELTA changes nothing (span table, prefix, previous
+  result stay as they were). The host's recovery is a FULL resend, which per the rule above
+  must re-declare SYSTEM_PROMPT. An evicted session (detail 4) has lost its table.
+- Stateless jobs (`session_id = 0`) protect their spans for that job only.
+- Reference: `proto_session_begin_job()` / `proto_session_commit_job()` /
+  `proto_session_protected_kind()` in `proto.c` (host-tested).
 
 ### 8.4 Result and cache-stable prefix (JOB_END v0.2 reply)
 | field | meaning |

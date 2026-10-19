@@ -218,6 +218,89 @@ int main(void)
     jbuf[23] = PROTO_MAX_SPANS + 1;
     CHECK(proto_parse_job_begin(jbuf, sizeof jbuf, &jr, &det) == ERR_CTX_OVERFLOW);
 
+    /* 9b. SYSTEM_PROMPT (kind 3) parses in FULL, rejected in DELTA; kinds > 3 rejected */
+    proto_job_begin_t full = {.job_id = 1, .total_len = 1000, .flags = JOB_FLAG_FULL, .session_id = 0xAB,
+                              .span_count = 3,
+                              .spans = {{0, 200, SPAN_SYSTEM_PROMPT}, {200, 50, SPAN_TASK},
+                                        {900, 100, SPAN_LATEST_TOOL_OUTPUT}}};
+    jn = proto_put_job_begin(jbuf, sizeof jbuf, &full);
+    CHECK(SPAN_SYSTEM_PROMPT == 3 && SPAN_KIND_COUNT == 4);
+    CHECK(proto_parse_job_begin(jbuf, (uint16_t)jn, &jr, &det) == ERR_OK && jr.spans[0].kind == SPAN_SYSTEM_PROMPT);
+    bad = jb; /* DELTA */
+    bad.spans[0].kind = SPAN_SYSTEM_PROMPT;
+    jn = proto_put_job_begin(jbuf, sizeof jbuf, &bad);
+    CHECK(proto_parse_job_begin(jbuf, (uint16_t)jn, &jr, &det) == ERR_BAD_PARAM && det == (JB_DETAIL_SYSPROMPT_DELTA | 0));
+    for (unsigned k = 4; k < 256; k += 25) {
+        bad = full;
+        bad.spans[1].kind = (uint8_t)k;
+        jn = proto_put_job_begin(jbuf, sizeof jbuf, &bad);
+        CHECK(proto_parse_job_begin(jbuf, (uint16_t)jn, &jr, &det) == ERR_BAD_PARAM && det == (JB_DETAIL_SPAN_BASE | 1));
+    }
+    bad = full;
+    bad.spans[1].kind = 255;
+    jn = proto_put_job_begin(jbuf, sizeof jbuf, &bad);
+    CHECK(proto_parse_job_begin(jbuf, (uint16_t)jn, &jr, &det) == ERR_BAD_PARAM);
+
+    /* 9c. session: SYSTEM_PROMPT from FULL persists across DELTA jobs */
+    static proto_session_t S;
+    proto_session_init(&S);
+    CHECK(proto_session_begin_job(&S, &full, &det) == ERR_OK && S.session_id == 0xAB && S.span_count == 2);
+    CHECK(proto_session_protected_kind(&S, 950, 10) == SPAN_LATEST_TOOL_OUTPUT); /* job-only, active now */
+    proto_session_commit_job(&S, 1000, 0x1111u, 600, 0x2222u);
+    CHECK(S.in_len == 1000 && proto_session_protected_kind(&S, 950, 10) == -1); /* ended with its job */
+    CHECK(proto_session_protected_kind(&S, 0, 1) == SPAN_SYSTEM_PROMPT);
+    proto_job_begin_t delta = {.job_id = 2, .total_len = 300, .flags = 0, .session_id = 0xAB, .prefix_len = 1000,
+                               .prefix_xxh = 0x1111u, .span_count = 1, .spans = {{10, 20, SPAN_TASK}}};
+    CHECK(proto_session_begin_job(&S, &delta, &det) == ERR_OK && S.span_count == 3);
+    CHECK(proto_session_protected_kind(&S, 199, 1) == SPAN_SYSTEM_PROMPT); /* not re-sent, still protected */
+    CHECK(proto_session_protected_kind(&S, 1015, 1) == SPAN_TASK && S.spans[2].offset == 1010);
+    CHECK(proto_session_protected_kind(&S, 300, 600) == -1);
+    proto_session_commit_job(&S, 300, 0x3333u, 700, 0x4444u);
+    CHECK(S.in_len == 1300);
+    /* second DELTA, no spans: SYSTEM_PROMPT still there */
+    delta.job_id = 3; delta.total_len = 50; delta.prefix_len = 1300; delta.prefix_xxh = 0x3333u; delta.span_count = 0;
+    CHECK(proto_session_begin_job(&S, &delta, &det) == ERR_OK && proto_session_protected_kind(&S, 100, 10) == SPAN_SYSTEM_PROMPT);
+    proto_session_commit_job(&S, 50, 0x5555u, 720, 0x6666u);
+    /* SESSION_MISMATCH leaves state untouched */
+    proto_session_t before = S;
+    delta.job_id = 4; delta.prefix_len = 1350; delta.prefix_xxh = 0xBADu;
+    CHECK(proto_session_begin_job(&S, &delta, &det) == ERR_SESSION_MISMATCH && det == SESS_MM_PREFIX_XXH);
+    CHECK(S.span_count == before.span_count && S.in_len == before.in_len && S.in_xxh == before.in_xxh &&
+          proto_session_protected_kind(&S, 0, 1) == SPAN_SYSTEM_PROMPT);
+    delta.prefix_len = 1349;
+    CHECK(proto_session_begin_job(&S, &delta, &det) == ERR_SESSION_MISMATCH && det == SESS_MM_PREFIX_LEN);
+    delta.session_id = 0xAC;
+    CHECK(proto_session_begin_job(&S, &delta, &det) == ERR_SESSION_MISMATCH && det == SESS_MM_UNKNOWN);
+    /* SYSTEM_PROMPT in a DELTA is refused by the session helper too */
+    delta.session_id = 0xAB; delta.prefix_len = 1350; delta.prefix_xxh = 0x5555u; delta.span_count = 1;
+    delta.spans[0] = (proto_span_t){0, 10, SPAN_SYSTEM_PROMPT};
+    CHECK(proto_session_begin_job(&S, &delta, &det) == ERR_BAD_PARAM && det == JB_DETAIL_SYSPROMPT_DELTA);
+    /* FULL reset drops the old SYSTEM_PROMPT; a FULL without one leaves nothing protected */
+    proto_job_begin_t full2 = {.job_id = 5, .total_len = 400, .flags = JOB_FLAG_FULL, .session_id = 0xAB};
+    CHECK(proto_session_begin_job(&S, &full2, &det) == ERR_OK && S.span_count == 0 && S.in_len == 0 &&
+          proto_session_protected_kind(&S, 0, 400) == -1);
+    /* stateless FULL: spans protect the job only, nothing recorded */
+    proto_job_begin_t sl = full;
+    sl.session_id = PROTO_SESSION_NONE;
+    CHECK(proto_session_begin_job(&S, &sl, &det) == ERR_OK && S.span_count == 0 &&
+          proto_session_protected_kind(&S, 0, 1) == SPAN_SYSTEM_PROMPT);
+    proto_session_commit_job(&S, 1000, 0, 0, 0);
+    CHECK(proto_session_protected_kind(&S, 0, 1) == -1);
+    /* span table overflow -> CTX_OVERFLOW, state unchanged */
+    proto_session_init(&S);
+    proto_job_begin_t many = {.job_id = 6, .total_len = 4000, .flags = JOB_FLAG_FULL, .session_id = 7,
+                              .span_count = PROTO_MAX_SPANS};
+    for (unsigned i = 0; i < PROTO_MAX_SPANS; i++) {
+        many.spans[i] = (proto_span_t){i * 10u, 5, SPAN_OTHER};
+    }
+    CHECK(proto_session_begin_job(&S, &many, &det) == ERR_OK);
+    proto_session_commit_job(&S, 4000, 9, 0, 0);
+    many.flags = 0; many.prefix_len = 4000; many.prefix_xxh = 9; many.job_id = 7;
+    CHECK(proto_session_begin_job(&S, &many, &det) == ERR_OK && S.span_count == 32);
+    proto_session_commit_job(&S, 4000, 10, 0, 0);
+    many.prefix_len = 8000; many.prefix_xxh = 10; many.span_count = 1;
+    CHECK(proto_session_begin_job(&S, &many, &det) == ERR_CTX_OVERFLOW && S.span_count == 32 && S.in_len == 8000);
+
     /* 10. v0.2: JOB_END result with cache-stable prefix report */
     proto_job_result_t res = {.job_id = 7, .est_tokens_in = 2500, .est_tokens_out = 1200, .out_len = 9000,
                               .cache_stable_len = 8000, .cache_stable_xxh = 0xDEADBEEFu, .protected_bytes = 200};

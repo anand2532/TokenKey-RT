@@ -285,6 +285,10 @@ uint8_t proto_parse_job_begin(const uint8_t *p, uint16_t len, proto_job_begin_t 
             *detail = (uint16_t)(JB_DETAIL_SPAN_BASE | i);
             return ERR_BAD_PARAM;
         }
+        if (sp.kind == SPAN_SYSTEM_PROMPT && !(jb->flags & JOB_FLAG_FULL)) {
+            *detail = (uint16_t)(JB_DETAIL_SYSPROMPT_DELTA | i);
+            return ERR_BAD_PARAM;
+        }
         end_prev = sp.offset + sp.len;
         jb->spans[i] = sp;
     }
@@ -316,6 +320,107 @@ size_t proto_put_job_begin(uint8_t *out, size_t cap, const proto_job_begin_t *jb
         q[8] = jb->spans[i].kind;
     }
     return n;
+}
+
+/* ---- v0.2: session state ---------------------------------------------------------------- */
+void proto_session_init(proto_session_t *s) { memset(s, 0, sizeof *s); }
+
+uint8_t proto_session_begin_job(proto_session_t *s, const proto_job_begin_t *jb, uint16_t *detail)
+{
+    *detail = 0;
+    const bool full = (jb->flags & JOB_FLAG_FULL) != 0;
+    uint32_t base;
+    uint8_t keep;
+    if (full) {
+        base = 0;
+        keep = 0; /* FULL reset: every recorded span, SYSTEM_PROMPT included, is dropped */
+    } else {
+        if (s->session_id == PROTO_SESSION_NONE || s->session_id != jb->session_id) {
+            *detail = SESS_MM_UNKNOWN;
+            return ERR_SESSION_MISMATCH;
+        }
+        if (jb->prefix_len != s->in_len) {
+            *detail = SESS_MM_PREFIX_LEN;
+            return ERR_SESSION_MISMATCH;
+        }
+        if (jb->prefix_xxh != s->in_xxh) {
+            *detail = SESS_MM_PREFIX_XXH;
+            return ERR_SESSION_MISMATCH;
+        }
+        base = s->in_len;
+        keep = s->span_count;
+    }
+    if (jb->total_len > UINT32_MAX - base) {
+        *detail = 0xFFFF;
+        return ERR_CTX_OVERFLOW;
+    }
+    /* count persistent spans first so failure leaves *s untouched */
+    uint32_t add = 0;
+    for (uint8_t i = 0; i < jb->span_count; i++) {
+        if (jb->spans[i].kind >= SPAN_KIND_COUNT) {
+            *detail = (uint16_t)(JB_DETAIL_SPAN_BASE | i);
+            return ERR_BAD_PARAM;
+        }
+        if (jb->spans[i].kind == SPAN_SYSTEM_PROMPT && !full) {
+            *detail = (uint16_t)(JB_DETAIL_SYSPROMPT_DELTA | i);
+            return ERR_BAD_PARAM;
+        }
+        add += PROTO_SPAN_KIND_PERSISTS(jb->spans[i].kind) ? 1u : 0u;
+    }
+    if (keep + add > PROTO_MAX_SESSION_SPANS) {
+        *detail = PROTO_MAX_SESSION_SPANS;
+        return ERR_CTX_OVERFLOW;
+    }
+    if (full) {
+        uint32_t id = jb->session_id;
+        proto_session_init(s);
+        s->session_id = id; /* PROTO_SESSION_NONE: stateless, nothing survives the job */
+    }
+    s->span_count = keep;
+    for (uint8_t i = 0; i < jb->span_count; i++) {
+        const proto_span_t *sp = &jb->spans[i];
+        if (PROTO_SPAN_KIND_PERSISTS(sp->kind) && s->session_id != PROTO_SESSION_NONE) {
+            proto_session_span_t *r = &s->spans[s->span_count++];
+            r->offset = base + sp->offset; /* new spans start at >= in_len: list stays sorted */
+            r->len = sp->len;
+            r->kind = sp->kind;
+            r->job_id = jb->job_id;
+        }
+        s->job_spans[i] = *sp;
+    }
+    s->job_span_count = jb->span_count;
+    s->job_base = base;
+    return ERR_OK;
+}
+
+void proto_session_commit_job(proto_session_t *s, uint32_t job_len, uint32_t new_in_xxh, uint32_t out_len,
+                              uint32_t out_xxh)
+{
+    s->in_len = s->job_base + job_len;
+    s->in_xxh = new_in_xxh;
+    s->prev_out_len = out_len;
+    s->prev_out_xxh = out_xxh;
+    s->job_span_count = 0; /* LATEST_TOOL_OUTPUT protection ends with its job */
+}
+
+static bool overlaps(uint32_t a, uint32_t alen, uint32_t b, uint32_t blen)
+{
+    return alen && blen && a < b + blen && b < a + alen; /* callers keep sums in range */
+}
+
+int proto_session_protected_kind(const proto_session_t *s, uint32_t offset, uint32_t len)
+{
+    for (uint8_t i = 0; i < s->span_count; i++) {
+        if (overlaps(offset, len, s->spans[i].offset, s->spans[i].len)) {
+            return s->spans[i].kind;
+        }
+    }
+    for (uint8_t i = 0; i < s->job_span_count; i++) {
+        if (overlaps(offset, len, s->job_base + s->job_spans[i].offset, s->job_spans[i].len)) {
+            return s->job_spans[i].kind;
+        }
+    }
+    return -1;
 }
 
 /* ---- v0.2: JOB_END result ---------------------------------------------------------------- */

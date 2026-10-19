@@ -115,7 +115,18 @@ typedef struct {
 #define JOB_BEGIN_V02_LEN     24u   /* + session_id u32, prefix_len u32, prefix_xxh u32, span_count u8 */
 #define JOB_SPAN_WIRE_LEN     9u    /* offset u32, len u32, kind u8 */
 
-typedef enum { SPAN_TASK = 0, SPAN_LATEST_TOOL_OUTPUT = 1, SPAN_OTHER = 2, SPAN_KIND_COUNT } proto_span_kind_t;
+/* Span kinds (usb_protocol.md 8.3). 4..255 are reserved for future minors and rejected
+ * (BAD_PARAM) by this version. Persistence: TASK, OTHER and SYSTEM_PROMPT spans stay
+ * protected for the whole session; LATEST_TOOL_OUTPUT only in the job that declares it.
+ * SYSTEM_PROMPT may only be declared in a FULL job. */
+typedef enum {
+    SPAN_TASK = 0,
+    SPAN_LATEST_TOOL_OUTPUT = 1,
+    SPAN_OTHER = 2,
+    SPAN_SYSTEM_PROMPT = 3,
+    SPAN_KIND_COUNT
+} proto_span_kind_t;
+#define PROTO_SPAN_KIND_PERSISTS(k) ((k) == SPAN_TASK || (k) == SPAN_OTHER || (k) == SPAN_SYSTEM_PROMPT)
 
 typedef struct {
     uint32_t offset; /* relative to this job's input (the delta for DELTA jobs) */
@@ -145,6 +156,7 @@ enum {
     JB_DETAIL_FULL_WITH_PREFIX,   /* FULL with non-zero prefix_len/prefix_xxh */
     JB_DETAIL_SPANS_TRUNCATED,    /* span_count larger than the payload */
     JB_DETAIL_SPAN_BASE = 0x100,  /* | span index: zero len, out of range, overlap/unsorted, bad kind */
+    JB_DETAIL_SYSPROMPT_DELTA = 0x200, /* | span index: SYSTEM_PROMPT declared in a DELTA job */
 };
 
 /* Parse a JOB_BEGIN payload (v0.1 or v0.2). Returns ERR_OK, ERR_BAD_PARAM or ERR_CTX_OVERFLOW
@@ -153,6 +165,51 @@ enum {
 uint8_t proto_parse_job_begin(const uint8_t *p, uint16_t len, proto_job_begin_t *jb, uint16_t *detail);
 /* Encode a v0.2 JOB_BEGIN payload (host side / tests). Returns length or 0. */
 size_t proto_put_job_begin(uint8_t *out, size_t cap, const proto_job_begin_t *jb);
+
+/* ---- per-session state (device side; pure C so the host test can drive it) -------------- */
+#define PROTO_MAX_SESSION_SPANS 32u /* persistent protected spans per session */
+
+/* A protected span recorded for the session, in SESSION input coordinates (byte offset in
+ * the concatenated input since the last FULL), so it stays valid while later DELTA jobs only
+ * send new bytes and the span itself sits in the cache-stable prefix and is never re-sent. */
+typedef struct {
+    uint32_t offset;
+    uint32_t len;
+    uint8_t kind;      /* SPAN_TASK, SPAN_OTHER or SPAN_SYSTEM_PROMPT */
+    uint16_t job_id;   /* job that declared it */
+} proto_session_span_t;
+
+typedef struct {
+    uint32_t session_id;   /* PROTO_SESSION_NONE = free slot */
+    uint32_t in_len;       /* session input bytes received since the last FULL */
+    uint32_t in_xxh;       /* xxh32 (seed 0) of those bytes, maintained by the job engine */
+    uint32_t prev_out_len; /* previous result of this session (cache-stable report) */
+    uint32_t prev_out_xxh;
+    uint8_t span_count;
+    proto_session_span_t spans[PROTO_MAX_SESSION_SPANS]; /* sorted by offset */
+    /* job in progress (between proto_session_begin_job and _commit_job) */
+    uint32_t job_base;     /* session offset of this job's byte 0 */
+    uint8_t job_span_count;
+    proto_span_t job_spans[PROTO_MAX_SPANS]; /* this job's spans incl. LATEST_TOOL_OUTPUT */
+} proto_session_t;
+
+void proto_session_init(proto_session_t *s);
+/* Validate a parsed JOB_BEGIN against the session and apply it atomically:
+ *  - FULL: (re)starts the session: drops ALL recorded spans, in_len = 0, then records the
+ *    job's persistent spans (incl. SYSTEM_PROMPT).
+ *  - DELTA: session_id must match and prefix_len/prefix_xxh must equal in_len/in_xxh, else
+ *    ERR_SESSION_MISMATCH (detail SESS_MM_*) and *s is left unchanged. Recorded spans
+ *    (incl. SYSTEM_PROMPT) are kept; the job's persistent spans are appended at
+ *    in_len + offset.
+ * Returns ERR_OK, ERR_SESSION_MISMATCH, ERR_BAD_PARAM or ERR_CTX_OVERFLOW (span table or
+ * 32-bit session offset overflow). */
+uint8_t proto_session_begin_job(proto_session_t *s, const proto_job_begin_t *jb, uint16_t *detail);
+/* After JOB_END: the job's input becomes part of the session prefix. */
+void proto_session_commit_job(proto_session_t *s, uint32_t job_len, uint32_t new_in_xxh,
+                              uint32_t out_len, uint32_t out_xxh);
+/* Is any byte of [offset, offset+len) in session coordinates protected (recorded spans or
+ * spans of the job in progress)? Returns the kind of the first hit, or -1. */
+int proto_session_protected_kind(const proto_session_t *s, uint32_t offset, uint32_t len);
 
 /* JOB_END response (v0.2 appends everything after est_tokens_in). */
 typedef struct {

@@ -165,7 +165,7 @@ Protocol draft v0.2 (minor 2, [`docs/usb_protocol.md`](docs/usb_protocol.md)). I
 size/uptime), SET_MODE, GET_MODE, ERROR replies (BAD_CRC, BAD_LEN, BAD_VERSION, BAD_PARAM,
 UNKNOWN_CMD), events EVT_BUTTON/EVT_MODE. JOB_*, SET_POLICY, GET_POLICY, GET_STATS, RESET_STATS and
 ENTER_BOOTLOADER return `ERROR UNKNOWN_CMD` with detail `0x0001` (not implemented yet). The v0.2
-data model (sessions, FULL/DELTA, protected spans, policy TLV blob, JOB_END cache-stable report)
+data model (sessions, FULL/DELTA, protected spans incl. session-persistent SYSTEM_PROMPT, per-session span table, policy TLV blob, JOB_END cache-stable report)
 is in `proto.h` with parsers/encoders in `proto.c`, host-tested; caps bit3 (`PROTO_CAP_SESSIONS`)
 stays clear until the handlers exist.
 
