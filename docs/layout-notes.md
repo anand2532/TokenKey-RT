@@ -62,8 +62,8 @@ Custom rules override these, so the floors sit at the BGA values and the staged 
 
 | Constraint | Value | JLC capability (multilayer, 1 oz) | Status |
 |---|---|---|---|
-| Min track width | 0.09 mm | 0.09 mm (3 mil OK in BGA fan-out) | OK |
-| Min clearance | 0.09 mm | 0.09 mm | OK |
+| Min track width | **0.10 mm** (raised from 0.09, layout-minimums) | 0.09 mm (3 mil OK in BGA fan-out) | OK, 0.01 mm margin over JLC |
+| Min clearance | **0.10 mm** (raised from 0.09, layout-minimums) | 0.09 mm | OK, 0.01 mm margin over JLC |
 | Min via annular ring | 0.075 mm | via dia = hole + 0.10 min / + 0.15 preferred | OK (preferred value) |
 | Min via diameter / hole | 0.30 / 0.15 mm | 0.25 / 0.15 min, 0.20 preferred hole | OK, **surcharge** (0.15 hole at any diameter) |
 | Min through-hole | 0.15 mm | 0.15 mm | OK (at JLC minimum) |
@@ -75,11 +75,11 @@ Custom rules override these, so the floors sit at the BGA values and the staged 
 
 ### 4.2 BGA area (MCU courtyard, MAPBGA196 10 × 10 mm, 0.65 mm pitch)
 
-**LOCKED (TokenKey PM, 2026-10-19, supersedes the earlier 0.20/0.35 lock):** BGA fan-out via **0.15 mm drill / 0.30 mm pad (0.075 mm annular ring)**, tracks and spaces **0.10 / 0.10 mm** between vias (the rule floor is 0.09 mm to absorb rounding). TokenKey DFM confirmed that JLC's "Via hole to Track 0.2 mm" rule also applies inside the BGA fan-out, which the 0.20/0.35 via broke (0.175 mm).
+**LOCKED (TokenKey PM, 2026-10-19, supersedes the earlier 0.20/0.35 lock):** BGA fan-out via **0.15 mm drill / 0.30 mm pad (0.075 mm annular ring)**, tracks and spaces **0.10 / 0.10 mm** between vias. The rule floor is also 0.10 mm (raised from 0.09 on the layout-minimums branch), which keeps a margin over JLC's 0.09 mm minimum. TokenKey DFM confirmed that JLC's "Via hole to Track 0.2 mm" rule also applies inside the BGA fan-out, which the 0.20/0.35 via broke (0.175 mm).
 
 - **Geometry (0.65 mm pitch, dog-bone via in the diagonal gap, one centred 0.10 mm track per channel):**
   - Via hole edge to track: (0.65 − 0.10)/2 − 0.075 = **0.200 mm**, which meets JLC's 0.2 mm rule with no exception.
-  - Via pad to track: (0.65 − 0.10)/2 − 0.15 = **0.125 mm** (≥ 0.09 BGA / 0.10 general).
+  - Via pad to track: (0.65 − 0.10)/2 − 0.15 = **0.125 mm** (≥ 0.10 floor).
   - Via pad to via pad: 0.65 − 0.30 = 0.35 mm, so only one track per channel.
   - Via hole to via hole: 0.65 − 0.15 = 0.50 mm (≥ 0.25).
   - Annular ring 0.075 mm is JLC's preferred value (hole + 0.15).
@@ -104,7 +104,7 @@ Custom rules override these, so the floors sit at the BGA values and the staged 
 | **Default** | 0.15 mm | 0.15 mm | 0.60 / 0.30 | — | (everything else) | **PM-approved** |
 | **Power** | 0.40 mm trunks (3V3/VBUS); 0.30 mm min for local branches | 0.20 mm | 0.60 / 0.30 | — | `VDD*`, `3V3`, `/3V3`, `VBUS`, `/VBUS`, `DCDC*`, `/DCDC*` | **PM-approved**. Pour where possible; check VBUS current |
 | **USB_HS** | **0.155 mm** | 0.50 mm to other nets | none (L1 only) | **0.20 mm** | `/USB_D*`, `/USB*_D[PN]` | **PM-approved**. 90 Ω diff, JLC-calculator values (§5) |
-| **BGA_Escape** | 0.10 mm (0.09 min) | 0.10 mm (0.09 min) | **0.30 / 0.15** | — | applied by area (U1 courtyard), not by net | **PM-locked** (§4.2). Enforced by the custom rules in the `.kicad_dru` |
+| **BGA_Escape** | 0.10 mm (0.10 min) | 0.10 mm (0.10 min) | **0.30 / 0.15** | — | applied by area (U1 courtyard), not by net | **PM-locked** (§4.2). Enforced by the custom rules in the `.kicad_dru` |
 
 The net patterns assume hierarchical names like `/USB_DP`, `/USB_DN`. **The schematic bot should name the USB pair `USB_DP` / `USB_DN`** (KiCad's diff-pair detection needs a `P`/`N` or `+`/`-` suffix) and keep the power nets matching the patterns above. DFM's draft calls the BGA class `BGA_Fanout`; this file uses `BGA_Escape` per the PM brief.
 
@@ -294,6 +294,6 @@ Silk pass: the reference designators were moved through the connector's move_foo
 **Known gaps:**
 - **Done (follow-up, PM-approved hand edit):** the JLC04161H-3313 stackup is in the `.kicad_pcb` `(setup (stackup …))`: F.Mask 0.015 (Er 3.8) / F.Cu 0.035 / prepreg 3313 0.0994 (Er 4.1) / In1.Cu GND 0.0152 / core 1.265 (Er 4.6) / In2.Cu PWR 0.0152 / prepreg 3313 0.0994 (Er 4.1) / B.Cu 0.035 / B.Mask 0.015, ENIG, silk and paste both sides. Total 1.564 mm copper + dielectric, 1.594 mm with mask (board thickness 1.6). The core is kept at the JLC table value; it does not affect the L1/L2 impedance.
 - The connector's netclass call persisted the classes (Default 0.15/0.15, Power 0.40, USB_HS 0.155/0.20, BGA_Escape 0.10/0.10 with 0.30/0.15 vias) but not the net assignments. Net-to-class patterns were added to `TokenKey-RT.kicad_pro` (USB_D[PN] → USB_HS; 3V3, VBUS, VDD_*, DCDC_*, NVCC_PLL, BUCK_SW → Power).
-- The connector's set_design_rules has no field for minimum annular ring, hole clearance or copper-to-edge, so the §4.1 floors (min clearance 0.09, annular 0.075, hole clearance 0.20, copper-to-edge 0.30) were written into the `TokenKey-RT.kicad_pro` design settings. The connector had also dropped the `sheets` list from that file; it was restored.
+- The connector's set_design_rules has no field for minimum annular ring, hole clearance or copper-to-edge, so the §4.1 floors (min clearance 0.10, raised from 0.09 on layout-minimums; min track 0.10; annular 0.075, hole clearance 0.20, copper-to-edge 0.30) were written into the `TokenKey-RT.kicad_pro` design settings. The connector had also dropped the `sheets` list from that file; it was restored.
 - `.kicad_dru` fix: the "USB keep-away from other signals" rule now skips pad-to-pad pairs. Once the USB_HS class was active it flagged the fixed 0.5 mm pin pitch of J1 and U6 (6 errors). It still applies to tracks and vias.
 - No BGA fan-out vias yet (optional in the brief and skipped). Routing is the next phase.
