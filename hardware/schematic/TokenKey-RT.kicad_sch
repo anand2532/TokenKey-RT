@@ -7,6 +7,17 @@
 (sheet (at 30.48 91.44) (size 60.96 30.48) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced yes) (stroke (width 0.1524) (type solid)) (fill (color 0 0 0 0.0000)) (uuid "16ce6155-0cb1-46d2-a62f-e2058aebe992") (property "Sheetname" "usb" (at 30.48 90.73 0) (effects (font (size 1.27 1.27)) (justify left bottom))) (property "Sheetfile" "usb.kicad_sch" (at 30.48 122.51 0) (effects (font (size 1.27 1.27)) (justify left top))) (instances (project "TokenKey-RT" (path "/69bcae8e-63e2-488c-b267-fe4af22cfb6e" (page "5")))))
 (sheet (at 106.68 91.44) (size 60.96 30.48) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced yes) (stroke (width 0.1524) (type solid)) (fill (color 0 0 0 0.0000)) (uuid "912f45be-b651-4781-b3b5-bccddac83cec") (property "Sheetname" "ui" (at 106.68 90.73 0) (effects (font (size 1.27 1.27)) (justify left bottom))) (property "Sheetfile" "ui.kicad_sch" (at 106.68 122.51 0) (effects (font (size 1.27 1.27)) (justify left top))) (instances (project "TokenKey-RT" (path "/69bcae8e-63e2-488c-b267-fe4af22cfb6e" (page "6")))))
 (sheet (at 182.88 91.44) (size 60.96 30.48) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced yes) (stroke (width 0.1524) (type solid)) (fill (color 0 0 0 0.0000)) (uuid "f819e5d3-85c4-46ac-ab2e-3b5ce9f6d724") (property "Sheetname" "debug" (at 182.88 90.73 0) (effects (font (size 1.27 1.27)) (justify left bottom))) (property "Sheetfile" "debug.kicad_sch" (at 182.88 122.51 0) (effects (font (size 1.27 1.27)) (justify left top))) (instances (project "TokenKey-RT" (path "/69bcae8e-63e2-488c-b267-fe4af22cfb6e" (page "7")))))
+	(text "ASSEMBLY: THT leads on the bottom side are trimmed to <=1.5 mm after soldering."
+		(exclude_from_sim no)
+		(at 30.48 25.4 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "9fa72b11-34bc-4070-aa17-5d77fbf55b32")
+	)
 (sheet_instances (path "/" (page "1")))
 (embedded_fonts no)
 )
