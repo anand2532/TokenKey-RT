@@ -1,0 +1,45 @@
+{
+  "meta": {
+    "filename": "TokenKey-RT.kicad_pro",
+    "version": 3
+  },
+  "schematic": {
+    "legacy_lib_dir": "",
+    "legacy_lib_list": []
+  },
+  "sheets": [
+    [
+      "69bcae8e-63e2-488c-b267-fe4af22cfb6e",
+      "Root"
+    ],
+    [
+      "ac6a820c-90cd-4dc7-a10d-64e8a5622379",
+      "power"
+    ],
+    [
+      "23672d8f-53fc-4309-8a86-d888b8c0a089",
+      "mcu"
+    ],
+    [
+      "3fa66865-6aa2-4508-8314-4aaa82c334a4",
+      "flash"
+    ],
+    [
+      "16ce6155-0cb1-46d2-a62f-e2058aebe992",
+      "usb"
+    ],
+    [
+      "912f45be-b651-4781-b3b5-bccddac83cec",
+      "ui"
+    ],
+    [
+      "f819e5d3-85c4-46ac-ab2e-3b5ce9f6d724",
+      "debug"
+    ]
+  ],
+  "boards": [],
+  "libraries": {
+    "pinned_footprint_libs": [],
+    "pinned_symbol_libs": []
+  }
+}
