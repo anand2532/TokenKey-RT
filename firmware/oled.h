@@ -8,6 +8,16 @@
 #define OLED_W 128
 #define OLED_H 64
 
+/* Display orientation (PM enclosure decision, #30): the OLED is mounted rotated 180 degrees to
+ * the user, so the default is ON. Done purely in the SSD1315 init sequence (segment remap +
+ * COM scan direction); the framebuffer is never flipped.
+ *   OLED_ROTATE_180 = 1: 0xA1 (segment remap, column 127 -> SEG0) + 0xC8 (COM scan COM63 -> COM0)
+ *   OLED_ROTATE_180 = 0: 0xA0 (column 0 -> SEG0, reset value)      + 0xC0 (COM scan COM0 -> COM63, reset value)
+ * Override with CMake -DOLED_ROTATE_180=OFF (or -DOLED_ROTATE_180=0). */
+#ifndef OLED_ROTATE_180
+#define OLED_ROTATE_180 1
+#endif
+
 bool oled_init(void);                 /* LPI2C1 400 kHz + controller init; false = no ACK */
 bool oled_present(void);
 void oled_clear(void);

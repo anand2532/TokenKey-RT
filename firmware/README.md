@@ -54,7 +54,7 @@ cmake -S . -B build-host && cmake --build build-host && ctest --test-dir build-h
 
 Options: `-DTK_PART=DVL6B|CVL5B` (default DVL6B), `-DTK_WATCHDOG=OFF` (bench debugging),
 `-DTK_FCB_SINGLE_PAD=ON` (recovery image whose FCB reads 1-1-1, boots with QE=0; see the
-bring-up checklist).
+bring-up checklist), `-DOLED_ROTATE_180=ON|OFF` (default **ON**, see "OLED orientation").
 No heap: `malloc/calloc/realloc/free` are `--wrap`ped without a definition, so any use fails at link time.
 
 ### Clock / part selection (never 600 MHz on a CVL5B)
@@ -174,6 +174,21 @@ stays clear until the handlers exist.
 Moved to [`docs/bringup_checklist.md`](docs/bringup_checklist.md): UART banner and VDD_SOC
 checks, W25Q64 SR2 (0x35) QE=1 check, ROM SDP + flashloader recovery (quad with QE setting, and
 a single-pad fallback), MCUXpresso Secure Provisioning path, USB/UI/watchdog checks.
+
+## OLED orientation
+
+PM enclosure decision (#30): the OLED is mounted **rotated 180° to the user**, so
+`OLED_ROTATE_180` defaults to ON (CMake option, plus a `#ifndef OLED_ROTATE_180` default of 1 in
+`oled.h`). It only changes two opcodes in the SSD1315 init sequence in `oled.c`; the
+framebuffer and drawing code are identical in both builds (no software flip).
+
+| `OLED_ROTATE_180` | Segment remap | COM scan direction | Result |
+|---|---|---|---|
+| ON (default) | `0xA1` (column 127 → SEG0) | `0xC8` (COM63 → COM0) | image rotated 180° vs. the controller's reset orientation |
+| OFF | `0xA0` (column 0 → SEG0, reset) | `0xC0` (COM0 → COM63, reset) | controller reset orientation |
+
+`-DOLED_ROTATE_180=OFF` is for a bare panel on the bench. Confirm on the first assembled unit
+that ON reads upright in the enclosure (bring-up checklist U2).
 
 ## Flash notes
 

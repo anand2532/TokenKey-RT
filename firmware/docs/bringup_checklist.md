@@ -112,7 +112,9 @@ F4. After programming, re-run F1 and confirm `QE(SR2[1])=1`, then reset without 
 
 1. LED pulses on USB traffic; `lsusb` shows the dev VID/PID (`TK_USB_VID`/`TK_USB_PID` in
    `usb_vendor.c`); HELLO/PING round-trip from a libusb script.
-2. OLED splash, then mode screen; check orientation (`0xA1/0xC8` in `oled.c`) and contrast.
+2. OLED splash, then mode screen; check orientation in the enclosure: the
+   default `OLED_ROTATE_180=ON` (SSD1315 `0xA1`/`0xC8`) must read upright; `OFF` uses `0xA0`/`0xC0`.
+   Check contrast.
 3. Encoder direction (`TK_ENC_INVERT`) and steps per detent (`TK_ENC_STEPS_PER_DETENT`, 2 for EC11E18244A5).
 4. I2C SCL frequency on a scope (target <= 400 kHz; ~365 kHz expected).
 5. Watchdog (`status_task` is the LED + watchdog task): stall a task in a test build and
