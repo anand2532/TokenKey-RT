@@ -2,11 +2,20 @@
 
 - **Date:** 2026-10-19
 - **Owner:** TokenKey Enclosure / ID. Reviewers: TokenKey PM, Anand.
-- **Status:** DRAFT. Research only. No CAD, printing or purchases yet. Per [decisions](../docs/decisions.md), there is no enclosure spend until PoC gates G1–G5 pass.
-- **Issue:** #29.
-- **Board data:**
-  - `hardware/schematic/TokenKey-RT.kicad_pcb` at PR #23 head `cfc9bc3` (branch `issue-22-placement`, not yet merged), with [layout-notes](../docs/layout-notes.md) §11 and §13.
-  - OLED mechanicals from `docs/decisions.md` on PR #25 (`issue-24-l2-inductor` @ `f2465ab`, not yet merged), row "OLED HS96L03W2C03 mechanicals".
+- **Status:** Research; Direction A approved. Parametric CAD is in [`cad/`](cad/README.md) (issue #42). No printing or purchases yet. Per [decisions](../docs/decisions.md), there is no enclosure spend until PoC gates G1–G5 pass.
+- **Issues:** #29 (research), #42 (CAD).
+- **Board data:** Layout's #31 commit **`eb4495a`** (branch `issue-31-pcb-l2`). It is **not on `main` yet**: main is at `995be50`, and the last board change there is `6fb72fa`. The CAD is designed to `eb4495a` anyway.
+  - Board file: `hardware/schematic/TokenKey-RT.kicad_pcb`.
+  - Docs: [layout-notes](../docs/layout-notes.md) §10–§11 and §13, and [decisions](../docs/decisions.md), rows "Board", "OLED HS96L03W2C03 mechanicals" and "OLED header height".
+  - Changes from main `6fb72fa`, all re-extracted:
+    - J2 moved from y 5.5 to **y 5.0**;
+    - L2 is now **TDK VLS3015CX (1.5 mm)** on the board (verified at `eb4495a`);
+    - the OLED drawings and `OLED_KEEP_UNDER` were redrawn for y 5.0, adding the back-side block band.
+  - Nothing else that matters to the enclosure moved. Earlier references: `cfc9bc3` (J2 at y 6.3) and main `6fb72fa` (J2 at y 5.5).
+- **OLED stack (PM final, 2026-10-19):**
+  - The module is soldered straight onto a **3.0 mm plastic-body header**, with no socket and no shim, so the module underside is at h = 3.0.
+  - Module thickness ≈ 2.65, so the **OLED top is 5.65 mm** above the PCB top. That is the design value.
+  - Header height and module thickness are both CAD parameters. The 6.6 mm figure is superseded.
 - **Coordinates:** KiCad board coordinates in mm (x east, y **south**; the board spans 0–50 × 0–40). Assumed values are labelled as assumptions.
 - **Regenerating the numbers:** `tools/board_extract.py` (KiCad 9 pcbnew) and `tools/oled_geometry.py`.
 
@@ -26,12 +35,17 @@
    - Ergonomics data: finger-operated knobs work at 10–30 mm diameter and 15–25 mm height [S19].
 4. **Hardware tokens (YubiKey, OnlyKey, SoloKeys, Nitrokey) win on sealed, seamless, no-moving-part construction.** Their failures are thin plastic cracking (Nitrokey 3A mini [S23]) and silicone sleeves tearing (OnlyKey [S21]). Tokens use capacitive touch with an LED prompt instead of buttons [S22][S24].
 5. **Small OLED gadgets (e.g. Flipper Zero) use a separate clear screen cover inside a textured matte body.** Flipper's injection-moulding trials hit flow waves in the screen cover, sink marks and weld lines near the buttons, and flash on the screw bosses [S25][S26]. Those are the IM risks to design out.
-6. **OLED HS96L03W2C03 (§1.1).** Window **22.74 × 11.86 mm** centred at J2 pin 1 + (3.81, 10.36). OLED top **5.65 mm** at a 3.0 mm standoff (range 5.1–7.2 mm). With J2 at y 6.3 the real module **overlaps the USB-C body by 0.06 mm**; at y 5.5 the gap is +0.74 mm. **J2 should move to y ≤ 5.5 (better 5.0).**
-7. **Recommendation: Direction A, a flat two-shell "puck" with screws through the four M2 holes.** It has a **bottom service hatch** over the TC2030 and the UART pads, and a **BOOT pinhole**. Wedge (B) and open-plate (C) variants can share the same PCB interface.
+6. **OLED HS96L03W2C03 (§1.1).**
+   - Window **22.74 × 11.86 mm**, centred at J2 pin 1 + (3.81, 10.36).
+   - **OLED top 5.65 mm** above the PCB (3.0 mm header + 2.65 mm module).
+   - Gap from the module PCB to the USB-C body: **+1.24 mm** with J2 at y 5.0 (`eb4495a`).
+   - **The conservative FPC-bend allowance (1.5 mm) clashes with the USB-C body by 0.26 mm in plan** (see `cad/`).
+7. **PM review (2026-10-19): Direction A approved.** The cable exits at the rear (board south edge) and the OLED is rotated 180° in firmware. The EC11 **keeps the 20 mm shaft** (EC11E18244A5), with a 14 mm knob by default. See the Decisions section.
+8. **Recommendation: Direction A, a flat two-shell "puck" with screws through the four M2 holes.** It has a **bottom service hatch** over the TC2030 and the UART pads, and a **BOOT pinhole**. Wedge (B) and open-plate (C) variants can share the same PCB interface.
 
 ---
 
-## 1. Board facts that drive the enclosure (PR #23, cfc9bc3)
+## 1. Board facts that drive the enclosure (eb4495a)
 
 To regenerate the full per-footprint data (positions, courtyards, pads, 3D model refs), run `python3 tools/board_extract.py <path/to/TokenKey-RT.kicad_pcb> <out.json>`.
 
@@ -40,7 +54,9 @@ To regenerate the full per-footprint data (positions, courtyards, pads, 3D model
 | PCB | 50 × 40 × 1.6 mm, R1 corners; 4 × Ø2.2 NPTH at (3,3), (47,3), (3,37), (47,37), each with a 5 mm keepout |
 | USB-C J1 | Top side, opening centred at **x = 17**. The receptacle **face is flush with the south edge** (y = 40). Body 9.0 wide, ~3.2 mm tall (typical; not checked against the HRO drawing) |
 | EC11 SW2 | EC11E18244A5. **Shaft axis (41.9, 17.5)**, body 11.7 × 12.1 mm. **The shaft top is 20 mm above the PCB.** φ6 D-shaft, M7 bushing, push travel 1.5 mm at 4 N, 36 detents |
-| OLED | **HS96L03W2C03**, 0.96" 128 × 64, on J2. Pins at y 6.3 (y 5.5 in the uncommitted `wt-layout`), x 16.34–23.96, pin 1 = GND at the west end. The module isn't in the board file. Real geometry and heights are in **§1.1**: module 27.3 × 27.8 mm; OLED top **5.1–7.2 mm** above the PCB depending on standoff h, **5.65 mm at the recommended h = 3.0** |
+| OLED | **HS96L03W2C03**, 0.96" 128 × 64, on J2. **Pins at y 5.0**, x 16.34–23.96; pin 1 = GND at the west end. The board carries the real outline (details in **§1.1**):<br>• module PCB: x 6.50–33.80, y 3.56–31.36<br>• glass, AA and four Ø2.5 holes<br>• the back-side block band at y 14.3–17.3<br>• rule area `OLED_KEEP_UNDER`<br>**OLED top 5.65 mm** (3.0 header + 2.65 module) |
+| Under the OLED (top side) | **L2 = `TokenKey:L_3.0x3.0mm_TDK_VLS3015CX`, 1.5 mm**, at (9.15, 21.4) rot 180. Verified in the `eb4495a` board file; there is no 3D model yet. Next tallest: U6 1.45, U1 1.4, Q1 1.25 mm. The cap is 2.0 mm (decisions, "Board") |
+| U4 SOIC-8 | (3.05, 25): courtyard 0.505 mm outside the module's west edge, 0.105 mm in from the board's west edge |
 | Buttons SW3/SW4 | Omron B3U-1000P at (38, 30) and (44, 30), 6 mm apart. 1.6 mm plunger, **0.15 mm pretravel**, 1.5 N [S11] |
 | Status LED D1 | 0603 at (36.5, 7.6) |
 | **BOOT SW1** | **Bottom** at (47.6, 31). Top-actuated B3U, so it **actuates downward** and can only be reached through a bottom pinhole |
@@ -53,53 +69,70 @@ To regenerate the full per-footprint data (positions, courtyards, pads, 3D model
 **Source.** decisions.md (PR #25) [S41], from HS datasheet V1.0 §1.1 and §1.4:
 - **Origin = header pin 1**, with +x toward pin 4 and +y from the header edge toward the glass.
 - J2 is at rotation 90 with its pins running east, and the module extends south. Module axes therefore map straight onto board axes, with no mirroring.
-- The numbers below come from `tools/oled_geometry.py`.
+- The numbers below come from `tools/oled_geometry.py` (`--header`, J2 y as arguments). The outline that main now carries on its Fab/User layers matches them.
 
-| Feature | Relative to pin 1 (mm) | Board, J2 at y 6.3 (PR #23) | Board, J2 at y 5.5 (wt-layout WIP) |
+| Feature | Relative to pin 1 (mm) | Board, J2 at y 5.5 (main 6fb72fa) | Board, **J2 at y 5.0 (eb4495a, design)** |
 |---|---|---|---|
-| Module PCB 27.30 × 27.80 | x −9.84 … +17.46, y −1.44 … +26.36 | x 6.50–33.80, y 4.86–32.66 | x 6.50–33.80, y 4.06–31.86 |
-| Glass 24.74 × 16.90 | x −8.60 … +16.14, y +3.43 … +20.33 | x 7.74–32.48, y 9.73–26.63 | y 8.93–25.83 |
-| Active area 21.744 × 10.864 (x position assumed centred, not dimensioned) | x −7.06 … +14.68, y +4.93 … +15.79 | x 9.28–31.02, y 11.23–22.09; centre (20.15, 16.66) | y 10.43–21.29; centre (20.15, 15.86) |
-| Mounting holes Ø2.50 (pad Ø3.0), pitch 23.30 × 23.80 | 2.00 mm from each edge | (8.50, 6.86), (31.80, 6.86), (8.50, 30.66), (31.80, 30.66) | y 6.06 and 29.86 |
+| Module PCB 27.30 × 27.80 | x −9.84 … +17.46, y −1.44 … +26.36 | x 6.50–33.80, y 4.06–31.86 | y 3.56–31.36 |
+| Glass 24.74 × 16.90 | x −8.60 … +16.14, y +3.43 … +20.33 | x 7.74–32.48, y 8.93–25.83 | y 8.43–25.33 |
+| Active area 21.744 × 10.864 (x position assumed centred, not dimensioned) | x −7.06 … +14.68, y +4.93 … +15.79 | x 9.28–31.02, y 10.43–21.29; centre (20.15, 15.86) | y 9.93–20.79; centre (20.15, 15.36) |
+| Mounting holes Ø2.50 (pad Ø3.0), pitch 23.30 × 23.80 | 2.00 mm from each edge | (8.50, 6.06), (31.80, 6.06), (8.50, 29.86), (31.80, 29.86) | y 5.56 and 29.36 |
 | FPC bend, 14.50 wide, at the far (south) edge | assumed centred | x 12.90–27.40, so **right over J1** (x 12.5–21.5) | same |
+
+(With the old J2 at y 6.3, the module would have spanned y 4.86–32.66 and overlapped the J1 body by 0.06 mm. That overlap is why Layout moved J2.)
 
 **Window.**
 - Size: AA + 0.5 mm per side = **22.74 × 11.86 mm**. That equals the datasheet viewing area (VA), with R0.5 corners.
-- Position: centre at **pin 1 + (3.81, 10.36)**, which is board **(20.15, 16.66)** with J2 at 6.3, or **(20.15, 15.86)** with J2 at 5.5. In CAD, tie the window to J2 pin 1, not to the board origin.
+- Position: centre at **pin 1 + (3.81, 10.36)**, which is board **(20.15, 15.36)** with J2 at 5.0 (`eb4495a`), or (20.15, 15.86) with J2 at 5.5 (main). In CAD, tie the window to J2 pin 1, not to the board origin.
 - Tolerance: the 0.5 mm margin covers header solder position (±0.2), datum-post play (±0.15) and the undimensioned AA x position.
-- Outside: a 45° chamfer opening out by ~1 mm on the lid's outer face, so a wide (>160°) viewing angle isn't shaded.
-- Glass edges: the glass extends 1.0 mm past the window on the north side and 4.0 mm on the south side. Keep the lid underside **0.3 mm clear of the glass**, or use 0.3 mm foam. Never load the glass.
+- **Lid stack:**
+  - Lid underside **6.0 mm** above the PCB (OLED top 5.65 + 0.35 clearance; PM asked for 0.3–0.4).
+  - Lid top **7.5 mm** (1.5 mm plate). The glass therefore sits 1.85 mm below the outer face.
+  - The opening is chamfered 45° through the full lid, about **25.7 × 14.9 mm** at the outer face, so a > 160° viewing angle isn't shaded.
+- **Glass edges:** the glass extends 1.0 mm past the window on the north side and 4.0 mm on the south side. Keep the lid 0.35 mm clear of the glass. Never load the glass.
 
-**Height.** The module is 2.65 mm thick per §1.1 (glass 1.40 + PCB 1.20). The side view also shows a **1.00 mm back-side feature**, so the envelope is ~3.6 mm. Most likely this is the FPC solder area at the far edge, but that is unconfirmed. Define **h = the height of the module-PCB underside above the main PCB**. The datasheet doesn't give a header height, so h is a CAD parameter.
+**Height.**
+- The module is 2.65 mm thick (glass 1.40 + PCB 1.20). The side view also shows a **1.00 mm back-side block**, which hangs **below** the module PCB. It sits in the band y +9.3…+12.3 from pin 1, x unknown.
+- **Header height h** (module-PCB underside above the main PCB) = **3.0 mm** (PM). The module is soldered directly onto the header's plastic body.
+- **OLED top = h + 2.65 = 5.65 mm (design value, PM final).** The lowest module point, the block, is at h − 1.0 = 2.0 mm.
+- `HEADER_H` and `OLED_MODULE_T` are parameters in `cad/params.py`.
 
-| h (mm) | OLED glass top above the main PCB | Lowest module point if the 1.0 mm feature hangs below | Notes |
-|---|---|---|---|
-| 2.5 (standard header plastic) | 5.10–5.15 | 1.50 | Only 0.05 mm over U6 (SOT-23-6, 1.45 mm) in the FPC strip. Fails over L2 at 2.0 mm (PR #23); 0 mm margin over L2 at 1.5 mm (PR #25) |
-| **3.0 (recommended)** | **5.60–5.65** | 2.00 | ≥ 0.5 mm over all keep-under parts once PR #25's 1.5 mm L2 lands |
-| 3.5 | 6.10–6.15 | 2.50 | |
-| 4.5 | 7.10–7.15 | 3.50 | Only needed if the module must overhang J1 (see below) |
+| Part under the module | Height | Margin under a 1.0 mm back feature at h = 3.0 |
+|---|---|---|
+| U6 SOT-23-6 (in the FPC strip) | 1.45 | **+0.55 → resolved** (it was +0.05 at h = 2.5) |
+| U1 MAPBGA196 | 1.4 | +0.60 |
+| L2 VLS3015CX (on the board at `eb4495a`) | 1.5 | +0.50 |
 
-So the OLED top is **5.1–7.2 mm** above the PCB, and **5.65 mm at h = 3.0**. The earlier 4.9 mm assumed a 2.37 mm Winstar module on a 2.5 mm header.
+So the **1.0 mm back-feature / U6 clearance issue is resolved by the 3.0 mm header.** The L2 zero-margin case (old SWPA4020) is gone at `eb4495a`.
+
+**Superseded:**
+- 4.9 mm (Winstar-class module on a 2.5 mm header);
+- layout-notes §11 "≈ 6.1 mm" (2.5 header + 3.6);
+- **6.6 mm** (3.0 header + 3.6 envelope; still written in `eb4495a` layout-notes/decisions as "≈ 6.6 mm / 8.2 mm overall").
 
 **Standoff concept.** There are no holes in the main PCB under the module holes. A foot resting on the main PCB would also hit C2 (0603) and C53 near the south holes, so the module can't be propped up from below there. Instead:
-1. **The header end sets the height.** Use a standard 2.5 mm male header plus a **0.5 mm printed shim** slid over the pins, then solder the module against it. That gives h = 3.0. Alternatively, solder in a printed jig that copies the lid's post geometry.
-2. **Top-shell datum posts locate the module.** Four posts hang from the lid underside at the four module holes. Each has a **Ø2.2 pin** (0.15 mm radial play in the Ø2.5 hole) and a **Ø4.0 shoulder** that stops 0.1–0.2 mm above the module PCB face. The posts register the glass to the window and keep loads off the glass and header.
-   - The north shoulders (y 6.86 or 6.06) sit 0.9 mm or more clear of the glass edge. The posts are at x 8.5 and 31.8, clear of the header pins at x 16.3–24.0.
+1. **The header sets the height:** the module is soldered directly onto a **3.0 mm plastic-body header** (PM). There is no shim and no socket.
+2. **Top-shell datum posts only locate the module; they do not clamp it.** Four posts hang from the lid underside at the four module holes. Each has a **Ø2.2 pin** (0.15 mm radial play in the Ø2.5 hole) and a **Ø4.0 shoulder** that stops 0.1–0.2 mm above the module PCB face. The posts register the glass to the window and keep loads off the glass and header.
+   - The north shoulders (holes at y 5.56 with J2 at 5.0) sit 0.87 mm clear of the glass edge.
+   - Post length to the shoulder: lid underside 6.0 − module PCB face (3.0 + 1.2 = 4.2) − 0.15 gap = 1.65 mm. The pin reaches 1.6 mm below the module PCB face. The posts are at x 8.5 and 31.8, clear of the header pins at x 16.3–24.0.
 3. **Production option:** screw the module to lid bosses (M2 self-tap) and connect it with a low-profile socket or a 4-wire flex. That makes window alignment independent of the main PCB. It needs a BOM or connector change.
 
 **USB-C clearance with the real module.** The J1 body runs from y 32.6 (courtyard from 30.985), x 12.5–21.5. Its top is ~3.2 mm, a typical value not checked against the HRO drawing.
-- **J2 at y 6.3 (PR #23):** the module's far edge is at 32.66, which **overlaps the J1 body by 0.06 mm** in plan. The FPC bend sits right over J1. To clear J1 vertically, h would need to be ≥ 3.5 mm (≥ 4.5 mm if the 1.0 mm back feature is there), pushing the OLED top to 6.2–7.2 mm. **Not acceptable as it stands.**
-- **J2 at y 5.5 (WIP):** the far edge is at 31.86, giving **+0.74 mm** in plan to the J1 body (still 0.88 mm inside J1's courtyard). How far the FPC bend sticks out past the PCB edge is not dimensioned. A typical 0.3–0.6 mm bulge would leave only ~0.1–0.4 mm. **Marginal.**
-- **Ask to Layout:**
-  - Commit J2 at **y ≤ 5.5**, preferably **y 5.0**. That gives +1.24 mm; the module top edge would be at 3.56 and the north holes at y 5.56, clear of the H1/H2 keepouts.
-  - Measure the FPC bend on a sample.
+- **Vertically, the module underside at h = 3.0 is still below the J1 top (~3.26 mm).** A bend that wraps under the module goes lower still, so the clearance has to come in plan.
+- **J2 at y 5.0 (`eb4495a`):** the module PCB's far edge is at 31.36, giving **+1.24 mm** to the J1 body (0.38 mm inside the courtyard).
+- **Conservative FPC bend (CAD check):** modelled 1.5 mm past the module edge, 14.5 mm wide, reaching down to z 2.0. That puts it **0.26 mm into the J1 body in plan, which is a CLASH** under the 0.3 mm rule.
+  - The bend can protrude at most **0.94 mm** for a 0.3 mm clearance.
+  - The alternative is J2 at y ≤ 4.44 (+0.56 mm more), which would need Layout to check H1/H2 and the top-edge parts.
+  - **Measure the bend on a real module** before deciding. For reference, J2 at y 5.5 (main) gave +0.74 mm to the module edge.
 
-**Orientation decision needed (PM / Anand).** With the OLED read header-up, J1 points at the user. The cable then runs toward the user's hand, and the knob ends up on the right with the buttons below it, near the user. There are three options:
-- **(a)** Keep the device as placed and use a 90° USB-C cable that exits sideways.
-- **(b)** Flip the display 180° in firmware so the cable goes out the back. The knob then moves to the user's left, with the buttons behind it.
-- **(c)** Change the PCB.
-
-This choice affects which face is "front" in every direction below. The dimensions below assume (a).
+**Orientation (decided, PM review).**
+- The USB-C cable exits at the **back**, away from the user. The **board's south edge (J1) is the rear of the device**, and the user faces the north edge.
+- Firmware rotates the OLED 180° using the SSD1315 segment/COM remap. No board change.
+- Seen by the user:
+  - the knob (EC11) is on the **left**;
+  - BTN1/BTN2 sit **behind** the knob, toward the rear;
+  - the status LED D1 is at the front, right of the knob;
+  - the TC2030/UART service hatch is under the front half.
 
 ## 2. What users like and dislike in similar products
 
@@ -169,43 +202,60 @@ Common to all three directions:
 - **FDM first.** PETG or ASA for the shells; PLA is fine for fit checks only. **SLA** (tough or grey resin) for the cosmetic top and the small actuators.
 - **IM notes:** 1.5° draft on the shell walls (3° if textured), 1.8 mm nominal wall, 0.9 mm ribs, cored bosses. A separate PMMA or PC window, either taped or ultrasonically welded.
 - **PCB retention:** 4 × M2 screws through the PCB holes. The boss OD is ≤ 5.0 mm so it fits the 5 mm keepout.
-- **USB-C:** obround external pocket **13.5 × 8.0 mm** (R 3, 0.5 mm × 45° chamfer), centred at x = 17 and z = PCB top + 1.6. It runs through the full wall so the overmold reaches the flush receptacle face. The inner hole for the receptacle is **9.5 × 3.8 mm**. A top-shell rib sits 0.1 mm above the J1 shell to resist prying.
+- **USB-C:** obround external pocket **13.5 × 8.0 mm** (R 3, 0.5 mm × 45° chamfer), centred at x = 17 and z = PCB top + 1.6. It is 1.9 mm deep and leaves a 0.6 mm skin, so the overmold face stops **1.1 mm** short of the flush receptacle face (0.5 mm board gap + 0.6 skin; check with real cables). The inner hole through the skin is **9.5 × 3.8 mm**. A top-shell rib sits 0.3 mm above the J1 shell to resist prying.
 - **BOOT pinhole:** **Ø1.8 mm** hole in the bottom at (47.6, 31). It is drawn mirrored in bottom view, at 2.4 mm from that edge. A guide tube runs up to 0.3 mm short of the B3U plunger, for a SIM tool or paperclip. Keep any PCB ledge or rib out of x > 45.9, y 28.5–33.5.
-- **Service hatch:** bottom opening **~18 × 13 mm** covering x 25.5–43.5, y 1.5–14.
-  - It exposes the TC2030 and TP1–TP5 for hand-held programming and UART pogo pins, and clears the H2 boss (which starts at x 44.5).
+- **Service hatch:** bottom opening **18.3 × 13 mm** covering x 25.5–43.8, y 1.0–14.0, with a separate 0.8 mm cover that drops into a 0.5 mm recess.
+  - It exposes the TC2030 and TP1–TP5 for hand-held programming and UART pogo pins, and clears the H2 boss (Ø4.6, which starts at x 44.7).
   - Keep the lid above J3 free of ribs (≥ 3 mm clear) so the guide pins can poke through.
   - Hands-free TC2030-CLIP use needs the top shell removed.
-- **Light pipe for D1:** Ø2 mm clear PC or PMMA rod, ~6 mm long, at (36.5, 7.6). For a quick prototype, a 0.6 mm thinned translucent wall printed in clear SLA also works.
-- **Knob:** **Ø16–18 mm, ~12 mm tall**, aluminium or SLA. Knurled or ribbed sides, a D-bore plus set screw, and a ≥ 2 mm skirt gap above the lid so the 1.5 mm push travel doesn't bottom out.
+- **Light pipe for D1:** Ø2 mm clear PC or PMMA rod, **6.5 mm** long (from 0.2 above the LED top at 0.8 mm to flush with the lid top at 7.5 mm), with a Ø3 × 0.4 mm flange under the lid, at (36.5, 7.6). For a quick prototype, a 0.6 mm thinned translucent wall printed in clear SLA also works.
+- **Knob:** **Ø17 mm** (parameter, 16–18), **14 mm tall** (parameter, default band 12–15), on the **20 mm EC11 shaft** (EC11E18244A5, 36 detents, kept by PM).
+  - Ribbed sides (30 flutes).
+  - 2.0 mm axial gap above the lid: 1.5 mm push + 0.5 mm left at full push.
+  - **7.0 mm shaft engagement.**
+  - **Bearing step:** the knob's bottom pocket runs **radially** on a Ø11 × 3.5 mm lid collar around the shaft, with 0.15 mm radial clearance. It overlaps the collar by 1.5 mm at rest and by 3.0 mm when pushed. The step is not an axial face, so the push still works.
+  - **Metal-insert option** (`KNOB_INSERT`):
+    - `sleeve` (default): Ø8 bore for a press-fit brass D-sleeve, 7 mm long;
+    - `setscrew`: D-bore plus a radial M3 heat-set insert for a set screw;
+    - `none`: plain printed D-bore.
+  - Knob top **23.5 mm** above the PCB, **29.2 mm above the desk**; +0.7 mm with the grip cord fitted.
   - At Ø18 it stays clear of the OLED window (right edge x 31.52) and D1 (11.3 mm from the axis).
   - It also stays ~3 mm clear in plan of the button caps (12.5 mm south of the axis).
-- **Buttons:** SLA caps **Ø5 mm**, 0.8 mm proud of the lid, on a ~5.7 mm stem, with 0.2 mm free travel above the B3U. Use a different texture per cap (concave vs. dot) plus laser or printed icons.
-  - ⚠ The B3U's 0.15 mm pretravel will feel like a "dead" click through a printed cap. Ask Layout about a bigger tact switch (e.g. 4 × 4 or 6 × 6 mm) if G4 user testing goes ahead.
-- **OLED:** window 22.74 × 11.86 mm at J2 pin 1 + (3.81, 10.36), with lid datum posts at the four module holes and h = 3.0 (see §1.1). Lid underside at **6.0 mm above the PCB** (OLED top 5.65 + 0.35 mm).
-- **Bottom clearance:** 2.5 mm (DNP L1 2.0 mm + 0.5 mm), assuming THT tails are trimmed to ≤ 1.5 mm.
-- **Mass and grip:** steel or brass ballast plus a silicone grip ring or 4 × Ø8 mm feet.
+- **Buttons (B3U kept, PM):** printed plunger caps with a **defined travel**.
+  - SLA cap Ø4.6 mm in a Ø5.0 lid hole, 0.8 mm proud of the lid.
+  - **6.4 mm** from the plunger nub to the cap top (lid top 7.5 + 0.8 − B3U top 1.6 − 0.3 free travel).
+  - Travel: **0.30 free + 0.15 B3U stroke + 0.05 = 0.50 mm** to a hard stop, where two Ø1.2 stop feet land on the PCB ±2.5 mm either side of the switch.
+  - Two 0.35 mm SLA cantilever arms, with bumps bearing on the lid underside, hold the cap up and retain it. They add an estimated ~2–3 N at full travel; tune `CAP_ARM_T`.
+  - Use a different texture per cap (concave vs. dot) plus icons.
+  - Revisit after the first print fit check.
+- **OLED:** window 22.74 × 11.86 mm at J2 pin 1 + (3.81, 10.36), chamfered through the lid to ~25.7 × 14.9 mm at the outer face. Lid datum posts at the four module holes, for location only. Header h = 3.0. Lid underside at **6.0 mm above the PCB** (OLED top 5.65 + 0.35), lid top at 7.5 mm (see §1.1).
+- **Encoder relief:** the EC11 body (~6.5 mm, Alps; verify) stands taller than the 6.0 mm lid underside. The lid has a 0.8 mm-deep relief over the body (skin 0.7 mm) plus the collar on top.
+- **Bottom clearance:** 2.5 mm (DNP L1 2.0 mm + 0.5 mm). THT tails are trimmed to ≤ 1.5 mm (PM).
+- **Mass and grip (design parameters, no purchases):** steel or brass ballast plus a silicone grip ring or 4 × Ø8 mm feet.
   - Rough estimate: resisting a 17 mN·m detent torque with friction alone (μ ≈ 0.8, r ≈ 18 mm) needs **~120 g**. This is an assumption; the user's finger pressure helps.
 
-### Direction A: flat "Puck" clamshell *(recommended)*
-- **Envelope:** **55 × 45 mm**, 3.5 mm outer corner radius. Body height **≈ 13.2 mm**: floor 1.6 + clearance 2.5 + PCB 1.6 + 6.0 (OLED top 5.65 + 0.35) + top 1.5.
-  - With the 20 mm EC11 shaft, the knob top is ≈ 26 mm off the desk.
-  - A **15 mm shaft (EC11E15244G1) would bring that to ≈ 21 mm.** Recommended PCB BOM change.
+### Direction A: flat "Puck" clamshell *(recommended; approved by PM)*
+- **Envelope:** **55 × 45 mm**, 3.5 mm outer corner radius. Body height **13.2 mm**: floor 1.6 + clearance 2.5 + PCB 1.6 + 6.0 (OLED top 5.65 + 0.35) + top 1.5.
+  - The PCB top sits 5.7 mm off the desk, and the 20 mm shaft tops out at 25.7 mm.
+  - Knob top **29.2 mm** above the desk (default 14 mm knob).
+- **CAD:** [`cad/`](cad/README.md), CadQuery, everything driven from `params.py`.
 - **Walls:** 2.0 mm on FDM, 1.6 mm on SLA. 0.5 mm PCB-to-wall gap, located by the bosses.
-- **Assembly:** 4 × M2 × 12 mm from below, through bottom-tray bosses, the PCB holes and into heat-set inserts in top-shell bosses. Lap joint at the parting line. No snaps, so it can be reopened many times.
+- **Assembly:** 4 × M2 × 8 mm (DIN 912) from below, through bottom-tray bosses, the PCB holes and into heat-set inserts in top-shell bosses. Lap joint at the parting line. No snaps, so it can be reopened many times.
 - **Window:** 22.74 × 11.86 mm opening (§1.1) with a 45° outer chamfer. Optionally a 1 mm smoked PMMA insert, flush in a 24.8 × 13.9 mm pocket.
-- **Ballast:** a 3 mm steel plate in the south half of the tray (avoiding the hatch and pinhole) gives ~20–30 g. Total ~60 g, which is **below target**. Add tungsten putty, or accept that the user holds it while turning.
+- **Ballast:** the 2.5 mm under-board gap only fits a **1.2 mm plate** under the BGA area: 18 × 18 mm, ~3 g in steel, ~7 g in tungsten. The CAD estimate is **~30 g total**, far **below the 120 g target**.
+  - Reaching it needs ~90 g more, e.g. a 45 × 35 × 7 mm steel slab under a thicker floor, which adds ~7 mm height. Alternatively, accept that the user steadies the puck while turning.
 - **Pros:** smallest; fastest to print; uses the existing PCB holes; all service needs met.
 - **Cons:** light; flat view of the OLED; little room for ballast.
 
 ### Direction B: tilted "Wedge"
-- **Envelope:** **58 × 48 mm**. The top face tilts **10°** down toward the user. Front height ~13.2 mm, back ~21.5 mm.
+- **Envelope:** **58 × 48 mm**. The top face tilts **10°** down toward the user, with the low edge at the board's north edge. Front height ~13.2 mm, back ~21.7 mm (13.2 + 48 · tan 10°), with the USB-C on the tall rear face.
 - **Inside:** the back cavity under the PCB takes a **~6 mm steel ballast block (~60–80 g)**, reaching the ≥ 100 g target. Full-perimeter silicone grip ring.
 - **Construction:** the same PCB/top-shell interface, hatch and pinhole as A. Only the bottom tray changes, so B can be **a drop-in tray swap for A**.
 - **Pros:** better OLED view and knob angle; stable; makes room for the stand look that Stream Deck users like [S6][S8].
-- **Cons:** about 2× the print time; a larger footprint; the USB-C opening sits on an angled front face (keep the pocket perpendicular to J1).
+- **Cons:** about 2× the print time; a larger footprint; the USB-C pocket on the tilted rear face must stay perpendicular to J1.
 
 ### Direction C: open "Sandwich" (bring-up / G4 test rig)
-- **Envelope:** 54 × 44 mm. A 2 mm smoked acrylic or SLA top plate and a 2 mm bottom plate on 4 × M2 standoffs (top 6 mm, bottom 3 mm). The sides are open.
+- **Envelope:** 54 × 44 mm. A 2 mm smoked acrylic or SLA top plate and a 2 mm bottom plate on 4 × M2 standoffs (top 7 mm so it clears the 5.65 mm OLED top; bottom 3 mm). The sides are open.
 - **Top plate:** cut-outs for the OLED window, knob, flexure button tabs and D1. Plus a 12 × 7 mm **opening above J3** so the TC2030-CLIP can be fitted with the unit assembled.
 - **Bottom plate:** the same hatch area left fully open, plus the BOOT pinhole.
 - **Pros:** cheapest; quickest; full debug access; USB-C recess is not an issue.
@@ -215,19 +265,41 @@ Common to all three directions:
 1. Prototype **Direction A** in FDM PETG/ASA, with an SLA top shell, knob and caps, as `enclosure/` v0.1 once the spend gate allows it.
 2. Make the **bottom tray a swappable interface**, so the **B wedge tray** can be printed later if G4 users want more grip or tilt.
 3. Use **C** only for bench bring-up.
-4. **Open decisions before CAD:**
-   1. **Orientation / cable exit (PM / Anand):** (a) a 90° cable, (b) a firmware 180° display flip with the cable out the back, or (c) a PCB change (§1).
-   2. **OLED (narrowed; PR #25 resolved the module drawing).** Still open:
-      1. **Layout: commit J2 at y ≤ 5.5, preferably 5.0**, for USB-C clearance.
-      2. **Standoff h:** recommend 3.0 mm (2.5 mm header + 0.5 mm shim).
-      3. **Measure a sample:** where and how big the 1.0 mm back-side feature is, and how far the FPC bend sticks out.
-      4. **Confirm the AA x position**, which is not dimensioned.
-      5. **Merge order:** PR #25 is based on the old "Board" row (2.5 mm keep-under), while PR #23 says 2.0 mm. Watch for the conflict.
-   3. **EC11 shaft length:** 15 mm (EC11E15244G1, knob top ≈ 21 mm) vs. 20 mm as placed (≈ 26 mm).
-   4. **THT tails** trimmed to ≤ 1.5 mm on the bottom (EC11, J1 tabs, J2).
-   5. **User buttons:** keep the B3U (0.15 mm pretravel) or move to a larger tact switch.
-   6. **H1–H4** stay NPTH (no chassis-GND contact): confirm.
-   7. **OLED retention:** lid datum posts (prototype) vs. a screwed module on a connector (production).
+4. CAD: issue #42, [`cad/`](cad/README.md).
+
+## Decisions (PM review, 2026-10-19)
+
+Direction A (the puck) is **approved**. The PM answered the open decisions as follows:
+
+| # | Topic | Decision | Effect on the enclosure |
+|---|---|---|---|
+| 1 | J2 position | J2 at **y ≤ 5.0**: done in Layout `eb4495a` (#31), not on main yet | Module-to-USB-C plan clearance +1.24 mm; window centre (20.15, 15.36). The CAD ties to J2 pin 1 |
+| 2 | Cable exit / orientation | USB-C exits at the **back**; firmware rotates the OLED 180° (SSD1315 seg/COM remap); no board change. The **board's south edge is the rear** | Knob on the user's left, buttons behind it, D1 at the front. The USB-C pocket goes on the rear face (B: the tall face) |
+| 3 | EC11 shaft / knob | **Updated: option (b).** Keep the **20 mm shaft (EC11E18244A5, 36 detents)**; the 15 mm swap is dropped. Knob height is a parameter, default 14 mm (band 12–15). Metal-insert option; radial bearing step | Shaft top 20 mm above the PCB. 7.0 mm engagement. Knob top 23.5 above the PCB / **29.2 mm above the desk**. Option (a) (15 mm shaft, short knob) stays only as a `TK_SHAFT=15` flag: it gives 2.0 mm engagement, so it is not exported |
+| 4 | THT leads | Trimmed to **≤ 1.5 mm** | Bottom clearance stays at 2.5 mm |
+| 5 | User buttons | **Keep B3U**, with printed plunger caps giving a defined travel; revisit after a print fit check | Caps as specified above |
+| 6 | M2 holes | Stay **NPTH** (no chassis-GND contact) | Plain screw bosses; no contact spring |
+| 7 | Under the OLED / stack | Max **2.0 mm** under the OLED. **Final stack:** module soldered directly onto a 3.0 mm plastic-body header, no socket or shim; OLED top ≈ 5.65 mm | Lid underside 6.0, lid top 7.5, body 13.2 mm. U6 clearance resolved |
+| — | Weight and grip | The ~120 g target and the grip ring stay **design parameters**; no purchases | Keep the ballast pocket and the grip-ring groove in CAD |
+
+**Still open or new:**
+1. **⚠ FPC bend vs. USB-C (CAD check):** see §1.1 and `exports/interference_report.md`.
+   - The conservative bend (1.5 mm past the module edge, 14.5 mm wide, down to z 2.0) clashes with the J1 body by **0.26 mm** in plan.
+   - Options:
+     - measure the bend on a real module (it passes if it protrudes ≤ 0.94 mm);
+     - move J2 to y ≤ 4.44;
+     - dress the FPC so it doesn't wrap down at the edge.
+2. **`eb4495a` is not on main.** Its docs also still say "OLED ≈ 6.6 mm / 8.2 mm overall" and "EC11 15 mm shaft". Both are now superseded by PM: 5.65 mm stack, 20 mm shaft. Layout/PM should update `docs/` before or when merging #31; that's outside `enclosure/`.
+3. **EC11 heights to verify on a part:**
+   - body ~6.5 mm, which sets the lid relief;
+   - bushing top at LB = 7 and shaft top at L1 = 20, both assumed to be measured from the PCB mounting surface.
+   - If L1 were measured from the body top, the shaft would sit 6.5 mm higher and the knob would need re-parameterising (`SHAFT_L`).
+4. **Measure a sample module:** the FPC bend, the back-block x position, and the AA x position.
+5. **OLED retention:** lid datum posts locate the module for the prototype; a screwed module plus connector is deferred to production.
+6. **Mass:** ~30 g estimated vs. the 120 g parameter (see Direction A).
+7. Resolved since the first review:
+   - the 15 mm shaft swap is dropped, so there is no EC11 BOM change;
+   - L2 is now VLS3015CX on the `eb4495a` board.
 
 ## Sources
 - [S1] Core77, "Extra UI for Your Computer: The Creator Micro": https://www.core77.com/posts/133626/Extra-UI-for-Your-Computer-The-Creator-Micro
