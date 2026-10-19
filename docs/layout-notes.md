@@ -180,26 +180,29 @@ Notes:
 
 - **Area:** the OLED module outline (27.3 × 27.3 mm for the Winstar WEA012864D-03 class, about 27.3 × 27.8 mm for generic modules) placed as in §13 over the MCU (the EC11 took the east edge). **Corrected to the real HS96L03W2C03 drawing (layout follow-up), see §10.1.** Inside it:
   - **Max component height on top: 2.0 mm** (PM, tightened from 2.5 mm). KiCad has no height DRC, so enforce it by hand: put each footprint's 3D model / `height` field in the BOM review, and add a `User.Comments` note "KEEP-UNDER-OLED: max 2.0 mm" on the outline. The `.kicad_dru` has a comment block for this; it is not machine-checked.
-  - Allowed: 0402/0603 passives, SOT-23/SOT-23-6, 2016/3225 crystals, ABS07, the MAPBGA196. Not allowed: EC11, USB-C, SOIC-8 208 mil (up to 2.16 mm, so U4 sits outside the area), electrolytics, TC2030 (bottom anyway), test hooks. L2 becomes the **TDK VLS3015CX-4R7M-1 at 1.5 mm max** (alternate **SWPA3015S4R7MT**), so the under-OLED margin at the 2.0 mm cap is now **0.5 mm**. **Pending:** until schematic issue #24 (commit f2465ab) merges and the footprint is swapped, the board still carries the 2.0 mm SWPA4020 (zero margin).
-  - The module's own back-side parts, if any, must clear the tallest part underneath (2.5 mm standoff − 2.0 mm parts = 0.5 mm). **Open (PM):** TokenKey Schematic says to allow 1.0 mm for the module back side. If back-side parts sit over our parts, the clearance is 2.5 − 1.0 = 1.5 mm, which is below the 2.0 mm cap. U1 at 1.4 mm and VLS3015CX L2 at 1.5 mm still fit, with 0.1 mm and 0 mm margin. Either the back-side part locations come from the module drawing, or a taller header is needed (for example 3.0 mm or more).
-
+  - Allowed: 0402/0603 passives, SOT-23/SOT-23-6, 2016/3225 crystals, ABS07, the MAPBGA196. Not allowed: EC11, USB-C, SOIC-8 208 mil (up to 2.16 mm, so U4 sits outside the area), electrolytics, TC2030 (bottom anyway), test hooks. L2 becomes the **TDK VLS3015CX-4R7M-1 at 1.5 mm max** (alternate **SWPA3015S4R7MT**), so the under-OLED margin at the 2.0 mm cap is now **0.5 mm**. **Done (issue #31):** L2 is now the `TokenKey:L_3.0x3.0mm_TDK_VLS3015CX` footprint on the board.
+  - **OLED header (DECIDED, PM, issue #31): 3.0 mm plastic header**, up from the 2.5 mm standard. **Why:** the HS96L03W2C03 side view shows a 1.0 mm back-side feature. Schematic located it at about **y +9.3…+12.3 mm from J2 pin 1** (board y 14.3–17.3 with J2 at y 5.0, drawn as a band on User.Comments), but its **x position is unknown**. PM's rule is that an undetermined location means 3.0 mm, which gives a real gap under the module of 3.0 − 1.0 = **2.0 mm**, meeting the 2.0 mm cap. **The block position is unverified: measure a real module before going to a lower header.** The band y 14.3–17.3 (full module width, x 6.5–33.8) is where tall parts are **riskiest**. Parts there today: U1 rows A–D (1.4 mm), C13 0603 (0.95), C11/C12/C30/C32/C48, R4/R5/R14/R15/R22 0402 (≤ 0.55). All are ≤ 1.4 mm.
+  - Follow-up for Schematic: choose the 3.0 mm header part number (BOM). J2's footprint has no height field. Its 3D model is the generic `PinHeader_1x04_P2.54mm_Vertical.step` (2.5 mm plastic) with zero offset, which a z offset can't turn into a 3.0 mm body, so the model was left unchanged. Swap the model when the part is chosen.
 ### 10.1 HS96L03W2C03 outline, mapped onto the board (layout follow-up)
 
-Drawing coordinates are from header pin 1 (GND, the square pad). +x runs toward pin 4 and +y toward the glass, the side the module overhangs. J2 pin 1 sits at board (16.34, 5.5). J2 is at rotation 90°, with pins along +x and the glass toward +y (south), so board = (16.34 + x, 5.5 + y).
+Drawing coordinates are from header pin 1 (GND, the square pad). +x runs toward pin 4 and +y toward the glass, the side the module overhangs. J2 pin 1 sits at board **(16.34, 5.0)** (issue #31; it was 5.5 in PR #23). J2 is at rotation 90°, with pins along +x and the glass toward +y (south), so board = (16.34 + x, 5.0 + y).
 
 | Feature | Drawing (from pin 1) | Board (mm) |
 |---|---|---|
-| Module PCB | x −9.84…+17.46, y −1.44…+26.36 (27.30 × 27.80) | **x 6.50–33.80, y 4.06–31.86** |
-| Glass | x −8.60…+16.14, y +3.43…+20.33 | x 7.74–32.48, y 8.93–25.83 |
-| Mounting holes Ø2.5 (2.0 mm in from the PCB edges, 23.3 × 23.8 pitch) | — | (8.50, 6.06), (31.80, 6.06), (8.50, 29.86), (31.80, 29.86) |
+| Module PCB | x −9.84…+17.46, y −1.44…+26.36 (27.30 × 27.80) | **x 6.50–33.80, y 3.56–31.36** |
+| Glass (24.74 × 16.90) | x −8.60…+16.14, y +3.43…+20.33 | x 7.74–32.48, y 8.43–25.33 |
+| Active area (21.744 × 10.864; x assumed centred, per decisions.md) | x −7.06…+14.68, y +4.93…+15.79 | x 9.28–31.02, y 9.93–20.79 |
+| Mounting holes Ø2.5, pad Ø3.0 (2.0 mm in from the PCB edges, 23.3 × 23.8 pitch) | — | (8.50, 5.56), (31.80, 5.56), (8.50, 29.36), (31.80, 29.36) |
+| 1.0 mm back-side block (x unknown) | y +9.3…+12.3 | y 14.3–17.3 band |
+| FPC bend (14.50 wide, far edge) | at y +26.36, x not dimensioned | at y 31.36 |
 | Module thickness | 2.65 mm nominal, about **3.6 mm** allowed | — |
 
-- The placement assumed x 6.5–33.8, y 4.3–32.1 with J2 at y 6.3. With the real offsets and J2 at y 6.3, the module PCB would have spanned y 4.86–32.66, which runs 0.06 mm over the J1 USB-C body (body starts at y 32.6, about 3.2 mm tall, so it collides with the module underside at 2.5 mm). **J2 moved 0.8 mm north, from (16.34, 6.3) to (16.34, 5.5).** The module PCB now ends at y 31.86, **0.74 mm clear of the J1 body** (J1 courtyard still overlaps the module outline by 0.9 mm; J1 is outside the module in plan view at body level).
-- The module stays fully inside the 50 × 40 board (**no overhang**): 6.5 mm from the west edge, 4.06 mm from the north edge, 16.2 mm from the east edge, 8.14 mm from the south edge.
+- The placement assumed x 6.5–33.8, y 4.3–32.1 with J2 at y 6.3. With the real offsets and J2 at y 6.3, the module PCB would have spanned y 4.86–32.66, which runs 0.06 mm over the J1 USB-C body (body starts at y 32.6, about 3.2 mm tall, so it collides with the module underside at 2.5 mm). **J2 moved 0.8 mm north, from (16.34, 6.3) to (16.34, 5.5)**, which left 0.74 mm. **Issue #31 (PM enclosure review, target ≥ 1.0 mm): J2 moved to (16.34, 5.0).** The module PCB now ends at y 31.36, **1.24 mm clear of the J1 USB-C body** (body starts at y 32.6). J1's courtyard still overlaps the module outline in plan view; the body does not. **Open:** the FPC bend at the far edge (14.5 mm wide) overlaps J1 in x if it is centred, x ≈ 12.9–27.4 against the J1 body at x 12.5–21.5. If the bend protrudes more than about 1.2 mm past the module PCB edge, it reaches the J1 body. Measure it on a real module.
+- The module stays fully inside the 50 × 40 board (**no overhang**): 6.5 mm from the west edge, **3.56 mm** from the north edge, 16.2 mm from the east edge, 8.64 mm from the south edge. J2's pads (y 4.15–5.85, x 15.5–24.8) are far from the H1/H2 keepouts (x ≤ 5.5 / ≥ 44.5).
 - EC11 (SW2): courtyard 0.955 mm and body 2.24 mm east of the module PCB edge (x 33.80), so the module, including a 1.0 mm back-side allowance, does not sit over the encoder.
 - U4: courtyard **0.505 mm** and body 0.75 mm outside the module PCB west edge (x 6.50), after the move to (3.05, 25). U4 is 5.6 mm from J1.
-- On the board: module PCB outline on F.Fab and User.Comments, glass and the four Ø2.5 holes on User.Drawings, and a rule area `OLED_KEEP_UNDER` (F.Cu, no keepout flags, marker only; KiCad has no height DRC) on the module PCB outline.
-- Top parts under the module PCB, all within the 2.0 mm cap except the pending L2: U1 (1.4), U6 (1.45), Q1 (1.25), Y1 (1.0), Y2 (0.9), 0603 C2/C13/C18 (≤ 0.95; C2 straddles the south edge), 0402 C11/C12/C17/C20/C22/C30/C32/C35/C39/C44–C48/C52/C53, R4–R6/R9/R12–R20/R22 (≤ 0.55), J2 itself (header), and **L2 SWPA4020 at 2.0 mm (zero margin, pending #24)**.
+- On the board: module PCB outline on F.Fab and User.Comments, glass, active area and the four Ø2.5 holes (with Ø3.0 pads) on User.Drawings, the back-side block band on User.Comments, and a rule area `OLED_KEEP_UNDER` (F.Cu, no keepout flags, marker only; KiCad has no height DRC) on the module PCB outline.
+- Top parts under the module PCB, all within the 2.0 mm cap (2.0 mm real gap with the 3.0 mm header): U1 (1.4), U6 (1.45), Q1 (1.25), Y1 (1.0), Y2 (0.9), 0603 C2/C13/C18 (≤ 0.95; C2 straddles the south edge), 0402 C11/C12/C17/C20/C22/C30/C32/C35/C39/C44–C48/C52/C53, R4–R6/R9/R12–R20/R22 (≤ 0.55), J2 itself (header), and **L2 VLS3015CX at 1.5 mm (0.5 mm margin)**. The tallest part under the module is L2 at 1.5 mm.
 - **Header footprint:** 1 × 4, 2.54 mm pitch THT (VCC, GND, SCL, SDA; check the module's pin order). It sits on the module edge inside the area, ≥ 0.30 mm hole-to-copper.
 
 ## 11. Stack height (for the enclosure)
@@ -207,14 +210,14 @@ Drawing coordinates are from header pin 1 (GND, the square pad). +x runs toward 
 | Item | Value | Source |
 |---|---|---|
 | PCB | 1.6 mm nominal (1.44–1.76) | JLC04161H-3313, JLC ±10 % |
-| Header standoff (male header plastic body) | 2.5 mm | Amtek 5PH1SDA25 "Pin Header 2.54 mm 1 Row H = 2.5 mm" (standard plastic) |
+| Header standoff (male header plastic body) | **3.0 mm** (DECIDED, PM, issue #31; was 2.5 mm) | 1.0 mm module back-side block at an unknown x needs 3.0 − 1.0 = 2.0 mm real gap (§10). Part number: Schematic follow-up |
 | OLED module (PCB + COG glass) | 2.37 mm (Winstar WEA012864D-03 / Raystar REA012864D-03, 27.3 × 27.3 × 2.37 mm); range 1.41–2.72 mm across 0.96" SSD1306 modules | Winstar / Raystar product pages; Midas MDOB128064WV-YBI datasheet (2.72 mm) |
 | HS96L03W2C03 module (chosen part) | 2.65 mm nominal; **design to 3.6 mm** | TokenKey Schematic, from the HS96L03W2C03 drawing |
-| **Top of OLED above PCB top (enclosure number)** | **≈ 6.1 mm** (J2 header plastic 2.5 + module 3.6) | calculated (layout follow-up) |
-| **Overall, PCB bottom to OLED top** | **≈ 7.7 mm** (1.6 + 2.5 + 3.6), plus bottom-side parts (TBD, ~1–2 mm for the boot button) | calculated |
+| **Top of OLED above PCB top (enclosure number)** | **≈ 6.6 mm** (3.0 mm header + about 3.6 mm module) | calculated (issue #31) |
+| **Overall, PCB bottom to OLED top** | **≈ 8.2 mm** (1.6 + 3.0 + 3.6), plus bottom-side parts (TBD, ~1–2 mm for the boot button) | calculated (issue #31) |
 | Earlier estimate (Winstar-class module, 2.37 mm) | 4.9 mm above PCB top / 6.5 mm overall | superseded |
 | 1.3" 128 × 64 module (SH1106) | **TBD**: no datasheet thickness found. It is also about 35 × 33 mm, which doesn't fit the 27 × 27 zone | — |
-| EC11 encoder body / shaft | **TBD**: depends on the shaft length variant | — |
+| EC11 encoder body / shaft | **15 mm shaft** (PM enclosure review, issue #31). Schematic keeps the same footprint (`RotaryEncoder_Alps_EC11E-Switch_Vertical_H20mm`), so no board change | PM / Schematic |
 
 Hobby "generic" 0.96" modules on 27.3 × 27.8 mm PCBs have no published thickness (**TBD**, measure a sample). The enclosure owner should design to the chosen module's datasheet.
 
@@ -239,12 +242,12 @@ All board edits were made through the KiCad MCP connector (create_board_from_sch
 |---|---|
 | U1 MCU | Top, (17, 20), **rotation 0**: row A north, column 1 west, row P south, column 14 east. That matches the ball map: QSPI (L3/L4/N4/P3–P5) and DCDC (M1/M2/N1/N2) south-west, USB (L8/M8) south, SWD/UART/I2C/UI (E14/F12/G13/K14/L14/J11/K11/L11–M12) east. |
 | USB | J1 HRO TYPE-C-31-M-12 top, (17, 36.3), on the south edge with the opening south and centred under the BGA. U6 USBLC6 at (17, 28.8) rotated 90° (flow-through: DP west, DN east), about 2.6 mm from the J1 pads. Corridor x ≈ 15.5–18.5 from row M to J1 is kept free of parts. CC resistors R12/R13 beside U6 at (14.5, 29.6) / (19.6, 29.6). VBUS caps C51/C26 east of J1. |
-| DCDC | L2 SWPA4020 top, (9.15, 21.4), rotated 180° (**4.0 × 4.0 mm area reserved**, centred on (9.15, 21.4): x 7.15–11.15, y 19.4–23.4, drawn on User.Comments; the SWPA4020 courtyard x 6.83–11.47, y 19.08–23.72 stays clear. The TDK VLS3015CX swap (`TokenKey:L_3.0x3.0mm_TDK_VLS3015CX`, pads at x = ±1.0, 3.7 × 3.7 courtyard) **follows once schematic #24 merges** as a drop-in at the same centre and rotation. The DCDC_LP pad centre then moves from x 10.65 to 10.15, 2.6 mm from M1, so the loop stays tight): the DCDC_LP pad faces M1/M2, about 1.5 mm from the BGA courtyard. Input caps C17/C20 (3V3) just south of L2 at N1/N2/L1/L2. Output caps C13 (22 µF), C11 and C12 north of L2, all on top. C5/R3 (PSWITCH) on the bottom west of the BGA. |
+| DCDC | L2 **TDK VLS3015CX-4R7M-1** (`TokenKey:L_3.0x3.0mm_TDK_VLS3015CX`, issue #31) top, (9.15, 21.4), **rotated 180°**, centred in the 4.0 × 4.0 mm reserved area (x 7.15–11.15, y 19.4–23.4, User.Comments). The courtyard is x 7.255–11.045, y 19.505–23.295. Of the four rotations, 180° puts the DCDC_LP pad (pad 1, centre (10.15, 21.4)) closest to ball M1 (12.775, 22.925): 3.04 mm centre to centre, 2.13 mm from pad edge to ball centre. 90° ties on edge distance at 2.13 but is 3.66 mm centre to centre. The VDD_SOC pad faces the output caps. The library footprint has no `(attr smd)`, so the board keeps `smd` for the position file, at the cost of one `lib_footprint_mismatch` warning; Schematic should add `attr smd` to the library footprint. the DCDC_LP pad faces M1/M2, about 1.5 mm from the BGA courtyard. Input caps C17/C20 (3V3) just south of L2 at N1/N2/L1/L2. Output caps C13 (22 µF), C11 and C12 north of L2, all on top. C5/R3 (PSWITCH) on the bottom west of the BGA. |
 | BGA decoupling | 0.22 µF (C6–C10, C14–C16, C19, C21, C23, C24, C27, C43) plus C41 on the **bottom under the BGA** (rotation-0 grid at x 13.8/16.0/18.2/20.2). 100 nF C29/C31/C33/C34 bottom north and C36–C38 bottom east. Bulk on top near the edge balls: C18 22 µF north; C30/C32/C35/C39 4.7 µF east; C22 (HIGH_CAP) south-west. C40/C42/C25 on the bottom south. |
 | QSPI flash | U4 SOIC-8 top, **(3.05, 25)** (moved 0.45 mm west in the follow-up; courtyard 0.505 mm outside the OLED module PCB, 0.105 mm in from the west board edge), rotated 90°, in the west band **outside the OLED area** (SOIC-8 208 mil is up to 2.16 mm). R9 (SCLK 22 Ω) at (12.5, 26.4) next to the L4 escape; C49 and R8 at U4. |
 | Crystals | Y1 24 MHz 3225 at (24.6, 23.2), rotated 90°, east of N11/P11; C44/C45 east of it. Y2 ABS07 at (21.2, 26.6), just south-east of N9/P9 with room for a guard ring and about 0.9 mm from the USB corridor; C46/C47 south of it. |
 | Power in | U2 AP2112K top, (9, 35), C1 input and C2 output beside it, near the VBUS pins. The spare buck U3/L1/C3/C4/R1/R2 (DNP) is on the **bottom** south-east of J1. |
-| UI | J2 OLED header top, **(16.34, 5.5)** (moved from y 6.3 in the follow-up), rotated 90° (pins along x, pin 1 west). OLED module PCB x 6.50–33.80, y 4.06–31.86 from the HS96L03W2C03 drawing (§10.1). SW2 EC11 top, (39.4, 25), rotated 90°, on the east edge between the H2/H4 keepouts and **not under the OLED**. SW3/SW4 just south of it; D1/R21 north of it (visible). Pull-ups and filters R14–R20, C52, C53 in a column at x 31–32.5 under the OLED edge. |
+| UI | J2 OLED header top, **(16.34, 5.0)** (from y 6.3, then 5.5 in PR #23, then 5.0 in issue #31), rotated 90° (pins along x, pin 1 west); 3.0 mm header. OLED module PCB x 6.50–33.80, y 3.56–31.36 from the HS96L03W2C03 drawing (§10.1). SW2 EC11 top, (39.4, 25), rotated 90°, on the east edge between the H2/H4 keepouts and **not under the OLED**. SW3/SW4 just south of it; D1/R21 north of it (visible). Pull-ups and filters R14–R20, C52, C53 in a column at x 31–32.5 under the OLED edge. |
 | Boot / misc | Q1, R6, R22 (BOOT_MODE0 buffer) and R4, R5, C48 on top east of the BGA. R7 (BOOT_MODE0 10k to GND) on the bottom at (25, 15). |
 | Bottom debug | J3 TC2030-NL at (39, 4), in the north-east, with the top side above it kept clear. TP1/TP2 (UART TX/RX), TP3 GND, TP4 POR_B and TP5 ONOFF at x 26.5–31.5, y 10–12.6. SW1 SW_BOOT at (47.6, 31), rotated 90°, near the east edge for a case pinhole. U5 PSRAM (DNP) with R10/R11/C50 in the bottom west band. |
 
@@ -252,7 +255,7 @@ All board edits were made through the KiCad MCP connector (create_board_from_sch
 
 | Part | Max height |
 |---|---|
-| L2 SWPA4020S4R7MT (until #24) → VLS3015CX-4R7M-1 | 2.0 mm (**zero margin, pending #24**) → 1.5 mm (0.5 mm margin) |
+| L2 VLS3015CX-4R7M-1 (issue #31; was SWPA4020 at 2.0 mm) | 1.5 mm (0.5 mm margin) |
 | U1 MAPBGA196 | ≈ 1.4 mm |
 | U6 SOT-23-6 | 1.45 mm |
 | Q1 SOT-23 | ≈ 1.25 mm |
@@ -261,7 +264,7 @@ All board edits were made through the KiCad MCP connector (create_board_from_sch
 | 0603 caps | ≤ 0.95 mm |
 | 0402 caps and resistors | ≤ 0.55 mm |
 
-Outside the area: U4 SOIC-8 (west band; courtyard 0.505 mm, body 0.75 mm from the real module edge), J1 USB-C body (starts at y 32.6, 0.74 mm south of the real module edge), the EC11, SW3/SW4, D1 and U2.
+Outside the area: U4 SOIC-8 (west band; courtyard 0.505 mm, body 0.75 mm from the real module edge), J1 USB-C body (starts at y 32.6, **1.24 mm** south of the real module edge with J2 at y 5.0), the EC11, SW3/SW4, D1 and U2.
 
 **DRC** (connector run_drc, KiCad 9.0.2, `.kicad_dru` active):
 
@@ -285,6 +288,7 @@ The silk warnings are reference/value text overlaps; they get cleaned up at the 
 | silk_overlap / silk_over_copper | **0** (was 81 / 49) |
 | silk_edge_clearance | 2: J1's own footprint silk where it crosses the board edge (the connector overhangs) |
 | lib_footprint_mismatch | 4: H1–H4, which carry the local keepout rule areas |
+| lib_footprint_mismatch (issue #31) | +1: L2, where the board keeps `attr smd` and the library footprint has none (5 in total) |
 | Unconnected pads (not routed) | 272 |
 
 Silk pass: the reference designators were moved through the connector's move_footprint_text, placed by a collision search on a throwaway copy against pads (+0.12 mm), footprint silk and other references, ≥ 0.3 mm from the edge and ≤ 1.8 mm from their part. 24 references with no free spot at 1.0 mm text were hidden on silk; they stay on F.Fab/B.Fab for the assembly drawing: C5, C8–C11, C15–C17, C19, C21, C22, C24, C32, C33, C35, C39, C41, C44, C48 (dense BGA, decoupling and crystal clusters), R13, R16, R17, R19 and R2 (DNP).

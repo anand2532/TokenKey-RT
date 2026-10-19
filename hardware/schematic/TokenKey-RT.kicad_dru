@@ -107,7 +107,7 @@
 
 # ---------- Keep-under-OLED (NOT machine-checked) ----------
 # KiCad has no component-height DRC. Inside the OLED module outline
-# (HS96L03W2C03 module PCB 27.30 x 27.80 mm at x 6.50-33.80, y 4.06-31.86,
+# (HS96L03W2C03 module PCB 27.30 x 27.80 mm at x 6.50-33.80, y 3.56-31.36 (J2 at y 5.0),
 # rule area OLED_KEEP_UNDER; docs/layout-notes.md section 10.1), top-side parts
 # must be <= 2.0 mm tall (PM, tightened from 2.5 mm). Check by hand using the
 # 3D models / BOM heights.
