@@ -1,4 +1,5 @@
-/* Host unit test for proto.c: CRC-16/CCITT-FALSE check value and the frame parser/dispatcher.
+/* Host unit test for proto.c: CRC-16/CCITT-FALSE check value, the frame parser/dispatcher and
+ * the v0.2 data model (JOB_BEGIN sessions/spans, JOB_END result, policy TLV blob).
  * Build+run: cmake -S . -B build-host && cmake --build build-host && ctest --test-dir build-host */
 #include <stdio.h>
 #include <string.h>
@@ -34,6 +35,21 @@ static proto_parse_result_t feed(const uint8_t *b, size_t n, int *count)
     return last_r;
 }
 
+/* field-wise compares (structs have padding, so no memcmp) */
+static int pol_eq(const proto_policy_t *a, const proto_policy_t *b)
+{
+    return a->preset == b->preset && a->budget_pct == b->budget_pct && a->dedup == b->dedup &&
+           a->cache_stable_prefix == b->cache_stable_prefix &&
+           memcmp(a->type_weight, b->type_weight, sizeof a->type_weight) == 0;
+}
+
+static int res_eq(const proto_job_result_t *a, const proto_job_result_t *b)
+{
+    return a->job_id == b->job_id && a->est_tokens_in == b->est_tokens_in && a->est_tokens_out == b->est_tokens_out &&
+           a->out_len == b->out_len && a->cache_stable_len == b->cache_stable_len &&
+           a->cache_stable_xxh == b->cache_stable_xxh && a->protected_bytes == b->protected_bytes;
+}
+
 static proto_device_t dev(void)
 {
     proto_device_t d = {.mode = MODE_BALANCED, .part = 0, .core_mhz = 600, .fw_version = 0x000100,
@@ -65,11 +81,12 @@ int main(void)
     /* 3. HELLO reply */
     proto_device_t d = dev();
     size_t rn = proto_handle(&d, PARSE_FRAME, &last, o, sizeof o);
-    CHECK(rn == 15 + PROTO_OVERHEAD);
-    CHECK(o[2] == (CMD_HELLO | 0x80) && o[3] == 7 && o[4] == 15);
+    CHECK(rn == 16 + PROTO_OVERHEAD);
+    CHECK(o[2] == (CMD_HELLO | 0x80) && o[3] == 7 && o[4] == 16);
     CHECK(o[6] == 1 && o[7] == 0x00 && o[8] == 0x01 && o[11] == 0); /* proto 1, fw 0.1.0, DVL6B */
     CHECK(o[12] == 0x58 && o[13] == 0x02);                           /* 600 MHz */
     CHECK(o[14] == 0x00 && o[15] == 0x10 && o[16] == 4);             /* 4096, window 4 */
+    CHECK(o[17] == PROTO_CAP_EVENTS && o[21] == PROTO_VERSION_MINOR); /* caps, minor 2 */
     /* reply itself must parse */
     proto_parser_init(&P);
     CHECK(feed(o, rn, NULL) == PARSE_FRAME && last.cmd == 0x81);
@@ -141,6 +158,129 @@ int main(void)
     CHECK(n == PROTO_MAX_FRAME);
     proto_parser_init(&P);
     CHECK(feed(f, n, NULL) == PARSE_FRAME && last.len == PROTO_MAX_PAYLOAD && memcmp(last.payload, maxpl, 4096) == 0);
+
+    /* 9. v0.2: JOB_BEGIN with session + protected spans (round trip) */
+    proto_job_begin_t jb = {.job_id = 7, .total_len = 1000, .flags = 0 /* DELTA */, .token_budget = 0,
+                            .session_id = 0xC0FFEE01u, .prefix_len = 5000, .prefix_xxh = 0x12345678u,
+                            .span_count = 2,
+                            .spans = {{0, 100, SPAN_TASK}, {900, 100, SPAN_LATEST_TOOL_OUTPUT}}};
+    uint8_t jbuf[JOB_BEGIN_V02_LEN + PROTO_MAX_SPANS * JOB_SPAN_WIRE_LEN + 1];
+    proto_job_begin_t jr;
+    uint16_t det;
+    size_t jn = proto_put_job_begin(jbuf, sizeof jbuf, &jb);
+    CHECK(jn == 24 + 2 * 9);
+    CHECK(proto_parse_job_begin(jbuf, (uint16_t)jn, &jr, &det) == ERR_OK && det == 0);
+    CHECK(jr.v02 && jr.session_id == 0xC0FFEE01u && jr.prefix_len == 5000 && jr.prefix_xxh == 0x12345678u);
+    CHECK(!(jr.flags & JOB_FLAG_FULL) && jr.span_count == 2 && jr.spans[1].offset == 900 &&
+          jr.spans[1].len == 100 && jr.spans[1].kind == SPAN_LATEST_TOOL_OUTPUT);
+    /* v0.1 payload (first 11 bytes) still accepted, FULL implied, no session */
+    CHECK(proto_parse_job_begin(jbuf, JOB_BEGIN_V01_LEN, &jr, &det) == ERR_OK && !jr.v02 &&
+          (jr.flags & JOB_FLAG_FULL) && jr.session_id == 0);
+    CHECK(proto_parse_job_begin(jbuf, 15, &jr, &det) == ERR_BAD_PARAM && det == JB_DETAIL_SHORT);
+    CHECK(proto_parse_job_begin(jbuf, (uint16_t)(jn - 1), &jr, &det) == ERR_BAD_PARAM &&
+          det == JB_DETAIL_SPANS_TRUNCATED);
+    /* overlapping / out-of-range / bad kind / zero-length spans */
+    proto_job_begin_t bad = jb;
+    bad.spans[1].offset = 50;
+    jn = proto_put_job_begin(jbuf, sizeof jbuf, &bad);
+    CHECK(proto_parse_job_begin(jbuf, (uint16_t)jn, &jr, &det) == ERR_BAD_PARAM && det == (JB_DETAIL_SPAN_BASE | 1));
+    bad = jb;
+    bad.spans[1].len = 101;
+    jn = proto_put_job_begin(jbuf, sizeof jbuf, &bad);
+    CHECK(proto_parse_job_begin(jbuf, (uint16_t)jn, &jr, &det) == ERR_BAD_PARAM && det == (JB_DETAIL_SPAN_BASE | 1));
+    bad = jb;
+    bad.spans[0].kind = SPAN_KIND_COUNT;
+    jn = proto_put_job_begin(jbuf, sizeof jbuf, &bad);
+    CHECK(proto_parse_job_begin(jbuf, (uint16_t)jn, &jr, &det) == ERR_BAD_PARAM && det == JB_DETAIL_SPAN_BASE);
+    bad = jb;
+    bad.spans[0].len = 0;
+    jn = proto_put_job_begin(jbuf, sizeof jbuf, &bad);
+    CHECK(proto_parse_job_begin(jbuf, (uint16_t)jn, &jr, &det) == ERR_BAD_PARAM && det == JB_DETAIL_SPAN_BASE);
+    /* offset near UINT32_MAX must not wrap */
+    bad = jb;
+    bad.spans[1].offset = 0xFFFFFFF0u;
+    bad.spans[1].len = 0x20;
+    jn = proto_put_job_begin(jbuf, sizeof jbuf, &bad);
+    CHECK(proto_parse_job_begin(jbuf, (uint16_t)jn, &jr, &det) == ERR_BAD_PARAM);
+    /* DELTA without session, FULL with prefix, too many spans */
+    bad = jb;
+    bad.session_id = PROTO_SESSION_NONE;
+    jn = proto_put_job_begin(jbuf, sizeof jbuf, &bad);
+    CHECK(proto_parse_job_begin(jbuf, (uint16_t)jn, &jr, &det) == ERR_BAD_PARAM && det == JB_DETAIL_DELTA_NO_SESSION);
+    bad = jb;
+    bad.flags = JOB_FLAG_FULL;
+    jn = proto_put_job_begin(jbuf, sizeof jbuf, &bad);
+    CHECK(proto_parse_job_begin(jbuf, (uint16_t)jn, &jr, &det) == ERR_BAD_PARAM && det == JB_DETAIL_FULL_WITH_PREFIX);
+    bad.prefix_len = 0;
+    bad.prefix_xxh = 0;
+    jn = proto_put_job_begin(jbuf, sizeof jbuf, &bad);
+    CHECK(proto_parse_job_begin(jbuf, (uint16_t)jn, &jr, &det) == ERR_OK && (jr.flags & JOB_FLAG_FULL));
+    jbuf[23] = PROTO_MAX_SPANS + 1;
+    CHECK(proto_parse_job_begin(jbuf, sizeof jbuf, &jr, &det) == ERR_CTX_OVERFLOW);
+
+    /* 10. v0.2: JOB_END result with cache-stable prefix report */
+    proto_job_result_t res = {.job_id = 7, .est_tokens_in = 2500, .est_tokens_out = 1200, .out_len = 9000,
+                              .cache_stable_len = 8000, .cache_stable_xxh = 0xDEADBEEFu, .protected_bytes = 200};
+    proto_job_result_t rr;
+    uint8_t rbuf[JOB_END_V02_LEN];
+    CHECK(proto_put_job_result(rbuf, sizeof rbuf, &res) == JOB_END_V02_LEN);
+    CHECK(proto_parse_job_result(rbuf, JOB_END_V02_LEN, &rr) == ERR_OK && res_eq(&rr, &res));
+    CHECK(proto_parse_job_result(rbuf, JOB_END_V01_LEN, &rr) == ERR_OK && rr.est_tokens_in == 2500 &&
+          rr.cache_stable_len == 0);
+    CHECK(proto_parse_job_result(rbuf, 5, &rr) == ERR_BAD_LEN);
+
+    /* 11. v0.2: policy presets, TLV parse/serialize, validation */
+    proto_policy_t pb, pq, pp;
+    proto_policy_preset(MODE_BALANCED, &pb);
+    proto_policy_preset(MODE_QUALITY, &pq);
+    CHECK(pb.budget_pct == 50 && pb.dedup && pb.cache_stable_prefix == POLICY_CACHE_PREFIX_ALL && pq.budget_pct == 85);
+    uint8_t blob[POLICY_BLOB_MAX];
+    size_t bn = proto_policy_serialize(&pb, blob, sizeof blob);
+    CHECK(bn == 30 && blob[0] == POLICY_VERSION && blob[1] == MODE_BALANCED);
+    CHECK(proto_policy_parse(blob, (uint16_t)bn, &pq, &pp, &det) == ERR_OK && pol_eq(&pp, &pb));
+    /* preset only = SET_MODE equivalent */
+    uint8_t only_q[] = {POLICY_VERSION, MODE_QUALITY};
+    CHECK(proto_policy_parse(only_q, 2, &pb, &pp, &det) == ERR_OK && pp.preset == MODE_QUALITY && pp.budget_pct == 85);
+    /* custom on top of current: budget 40, dedup off, cache prefix 4096, CODE weight 90, unknown optional TLV */
+    uint8_t cust[] = {POLICY_VERSION, POLICY_PRESET_CUSTOM, POL_TLV_BUDGET_PCT, 1, 40, POL_TLV_DEDUP, 1, 0,
+                      POL_TLV_CACHE_STABLE_PREFIX, 4, 0x00, 0x10, 0x00, 0x00, POL_TLV_TYPE_WEIGHT, 2, SEG_CODE, 90,
+                      0x81, 3, 1, 2, 3};
+    CHECK(proto_policy_parse(cust, sizeof cust, &pb, &pp, &det) == ERR_OK && pp.preset == POLICY_PRESET_CUSTOM &&
+          pp.budget_pct == 40 && !pp.dedup && pp.cache_stable_prefix == 4096 && pp.type_weight[SEG_CODE] == 90 &&
+          pp.type_weight[SEG_TEXT] == pb.type_weight[SEG_TEXT]);
+    bn = proto_policy_serialize(&pp, blob, sizeof blob);
+    CHECK(blob[1] == POLICY_PRESET_CUSTOM);
+    proto_policy_t pp2;
+    CHECK(proto_policy_parse(blob, (uint16_t)bn, &pq, &pp2, &det) == ERR_OK && pol_eq(&pp2, &pp));
+    uint8_t badv[] = {2, 0};
+    CHECK(proto_policy_parse(badv, 2, &pb, &pp, &det) == ERR_POLICY_INVALID && det == POL_DETAIL_VERSION);
+    uint8_t badp[] = {POLICY_VERSION, 3};
+    CHECK(proto_policy_parse(badp, 2, &pb, &pp, &det) == ERR_POLICY_INVALID && det == POL_DETAIL_PRESET);
+    uint8_t badb[] = {POLICY_VERSION, 0, POL_TLV_BUDGET_PCT, 1, 101};
+    CHECK(proto_policy_parse(badb, sizeof badb, &pb, &pp, &det) == ERR_POLICY_INVALID &&
+          det == (POL_DETAIL_BAD_VALUE | POL_TLV_BUDGET_PCT));
+    uint8_t badl[] = {POLICY_VERSION, 0, POL_TLV_DEDUP, 2, 1, 1};
+    CHECK(proto_policy_parse(badl, sizeof badl, &pb, &pp, &det) == ERR_POLICY_INVALID &&
+          det == (POL_DETAIL_BAD_LEN | POL_TLV_DEDUP));
+    uint8_t badt[] = {POLICY_VERSION, 0, POL_TLV_CACHE_STABLE_PREFIX, 4, 0};
+    CHECK(proto_policy_parse(badt, sizeof badt, &pb, &pp, &det) == ERR_POLICY_INVALID && det == POL_DETAIL_TRUNCATED);
+    uint8_t badu[] = {POLICY_VERSION, 0, 0x05, 0};
+    CHECK(proto_policy_parse(badu, sizeof badu, &pb, &pp, &det) == ERR_POLICY_INVALID && det == (POL_DETAIL_UNKNOWN | 5));
+    uint8_t badw[] = {POLICY_VERSION, 0, POL_TLV_TYPE_WEIGHT, 2, SEG_TYPE_COUNT, 10};
+    CHECK(proto_policy_parse(badw, sizeof badw, &pb, &pp, &det) == ERR_POLICY_INVALID &&
+          det == (POL_DETAIL_BAD_VALUE | POL_TLV_TYPE_WEIGHT));
+
+    /* 12. v0.2 commands are defined but not implemented in the skeleton */
+    n = proto_build(f, sizeof f, CMD_SET_POLICY, 12, only_q, 2);
+    proto_parser_init(&P);
+    feed(f, n, NULL);
+    proto_handle(&d, PARSE_FRAME, &last, o, sizeof o);
+    CHECK(o[2] == CMD_ERROR && o[6] == CMD_SET_POLICY && o[7] == ERR_UNKNOWN_CMD && o[8] == ERR_DETAIL_NOT_IMPLEMENTED);
+    n = proto_build(f, sizeof f, CMD_GET_POLICY, 13, NULL, 0);
+    feed(f, n, NULL);
+    proto_handle(&d, PARSE_FRAME, &last, o, sizeof o);
+    CHECK(o[2] == CMD_ERROR && o[6] == CMD_GET_POLICY && o[8] == ERR_DETAIL_NOT_IMPLEMENTED);
+    CHECK(ERR_SESSION_MISMATCH == 0x0D && ERR_POLICY_INVALID == 0x0E && PROTO_CAP_SESSIONS == 0x8);
 
     if (fails) {
         printf("%d check(s) FAILED\n", fails);

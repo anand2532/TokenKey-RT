@@ -22,7 +22,7 @@ Status: **skeleton, builds cleanly, not yet run on hardware** (see [`docs/bringu
 | `proto.c/.h` | frame CRC/builder/parser/dispatcher (pure C, host-tested) |
 | `oled.c/.h`, `ui.c` | LPI2C1 + SSD1315 driver, 1 KB framebuffer, 5x7 font; `ui_task` screens |
 | `input.c` | GPIO1 ISR + `input_task` (quadrature table, debounce, long press) |
-| `test_proto.c` | host unit test: CRC-16 check 0x29B1, parser resync, BAD_CRC/BAD_LEN/BAD_VERSION, commands |
+| `test_proto.c` | host unit test: CRC-16 check 0x29B1, parser resync, BAD_CRC/BAD_LEN/BAD_VERSION, commands, v0.2 JOB_BEGIN/spans, JOB_END result, policy TLVs |
 | `tools/w25q_status.py` | pyOCD script: read W25Q64 SR1/SR2/SR3 over SWD, check/set QE |
 | `docs/bringup_checklist.md` | bring-up steps, QE check, blhost recovery commands with NXP sources |
 | `third_party/` | minimal vendored CMSIS core, MIMXRT1062 device headers, TinyUSB 0.20.0, FreeRTOS-Kernel V11.1.0 ([manifest + licenses](third_party/README.md)) |
@@ -161,10 +161,13 @@ to-do for replacing them is marked there, nowhere else). Interface class 0xFF, b
 Linux udev example: use the hex values of `TK_USB_VID`/`TK_USB_PID`:
 `SUBSYSTEM=="usb", ATTR{idVendor}=="<vid>", ATTR{idProduct}=="<pid>", MODE="0666"`.
 
-Implemented: HELLO (15-byte reply), PING (<= 64 B echo), GET_INFO (TLV serial/build id/flash
+Protocol draft v0.2 (minor 2, [`docs/usb_protocol.md`](docs/usb_protocol.md)). Implemented: HELLO (16-byte reply, last byte = minor), PING (<= 64 B echo), GET_INFO (TLV serial/build id/flash
 size/uptime), SET_MODE, GET_MODE, ERROR replies (BAD_CRC, BAD_LEN, BAD_VERSION, BAD_PARAM,
-UNKNOWN_CMD), events EVT_BUTTON/EVT_MODE. JOB_*, GET_STATS, RESET_STATS and ENTER_BOOTLOADER
-return `ERROR UNKNOWN_CMD` with detail `0x0001` (not implemented yet).
+UNKNOWN_CMD), events EVT_BUTTON/EVT_MODE. JOB_*, SET_POLICY, GET_POLICY, GET_STATS, RESET_STATS and
+ENTER_BOOTLOADER return `ERROR UNKNOWN_CMD` with detail `0x0001` (not implemented yet). The v0.2
+data model (sessions, FULL/DELTA, protected spans, policy TLV blob, JOB_END cache-stable report)
+is in `proto.h` with parsers/encoders in `proto.c`, host-tested; caps bit3 (`PROTO_CAP_SESSIONS`)
+stays clear until the handlers exist.
 
 ## Bring-up checklist
 
