@@ -5,7 +5,7 @@
 # See docs/layout-notes.md for values, sources and the open DFM caveat.
 # MCU reference designator is U1 (checked against the imported netlist).
 # Board Setup > Constraints must hold the global floors listed in
-# docs/layout-notes.md (min track 0.09, min clearance 0.09, min annular 0.075,
+# docs/layout-notes.md (min track 0.10, min clearance 0.10, min annular 0.075,
 # min via 0.30/0.15, min through-hole 0.15, hole-to-hole 0.25, copper-to-edge 0.30,
 # hole clearance 0.20); the rules below then tighten or relax per area.
 
@@ -41,8 +41,8 @@
 # Via covering (mask vs plugged/epoxy) is open with DFM; see layout-notes 4.2.
 (rule "BGA escape track/space"
   (condition "A.intersectsCourtyard('U1') || B.intersectsCourtyard('U1')")
-  (constraint track_width (min 0.09mm) (opt 0.10mm))
-  (constraint clearance (min 0.09mm)))
+  (constraint track_width (min 0.10mm) (opt 0.10mm))
+  (constraint clearance (min 0.10mm)))
 
 (rule "BGA via"
   (condition "A.Type == 'via' && A.intersectsCourtyard('U1')")
@@ -62,7 +62,7 @@
 (rule "USB neck-down inside BGA"
   (layer outer)
   (condition "A.hasNetclass('USB_HS') && A.intersectsCourtyard('U1')")
-  (constraint track_width (min 0.09mm) (opt 0.10mm)))
+  (constraint track_width (min 0.10mm) (opt 0.10mm)))
 
 # Pad-to-pad pairs are excluded: the USB-C (0.5 mm pitch) and USBLC6 pins are
 # fixed by the footprints; the 0.5 mm keep-away is for routed copper.
@@ -107,7 +107,7 @@
 
 # ---------- Keep-under-OLED (NOT machine-checked) ----------
 # KiCad has no component-height DRC. Inside the OLED module outline
-# (HS96L03W2C03 module PCB 27.30 x 27.80 mm at x 6.50-33.80, y 4.06-31.86,
+# (HS96L03W2C03 module PCB 27.30 x 27.80 mm at x 6.50-33.80, y 3.56-31.36 (J2 at y 5.0),
 # rule area OLED_KEEP_UNDER; docs/layout-notes.md section 10.1), top-side parts
 # must be <= 2.0 mm tall (PM, tightened from 2.5 mm). Check by hand using the
 # 3D models / BOM heights.
