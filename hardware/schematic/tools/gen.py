@@ -30,8 +30,9 @@ CVAL = {'100nF': ('CL05B104KO5NNNC', 'C1525', 'C0402'), '220nF': ('CL05A224KA5NN
         '10uF': ('CL10A106KP8NNNC', 'C19702', 'C0603'), '22uF': ('CL10A226MQ8NRNC', 'C59461', 'C0603'),
         '15pF': ('0402CG150J500NT', 'C1548', 'C0402'), '18pF': ('0402CG180J500NT', 'C1549', 'C0402'),
         '10nF': ('CL05B103KB5NNNC', 'C15195', 'C0402')}
-# second sources: value -> (MPN_Alt, LCSC_Alt). 220nF: C47129 stock 1,400 on 2026-10-19; C16772 854,600 (LCSC)
-CALT = {'220nF': ('CL05B224KO5NNNC', 'C16772')}
+# second sources: value -> (MPN_Alt, LCSC_Alt). LCSC stock 2026-10-19: 220nF C47129 1,400 / C16772 854,600;
+# 4.7uF C23733 out of stock / C368809 1,355,750
+CALT = {'220nF': ('CL05B224KO5NNNC', 'C16772'), '4.7uF': ('CL05A475KP5NRNC', 'C368809')}
 
 # symbol defs: name -> dict(ref, units:[ [ (num,name,type,side) ] ], hide_names)
 SYMS = {}

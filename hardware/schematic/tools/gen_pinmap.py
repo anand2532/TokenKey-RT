@@ -82,6 +82,7 @@ L += ['', '## Other interfaces', '',
       '2. APS6404L-3SQR-ZR: pinout and footprint checked (see above); exposed pad left unconnected - confirm with AP Memory if it should be GND.',
       '3. OLED: HS96L03W2C03 datasheet does not show whether the module itself carries SCL/SDA pull-ups (assume none; R14/R15 fitted). Confirm hole/header positions on a sample before enclosure CAD.',
       '4. 220nF 0402: primary CL05A224KA5NNNC C47129 (25V X5R, 1,400 in stock 2026-10-19); second source CL05B224KO5NNNC C16772 (16V X7R, 854,600 in stock) in MPN_Alt/LCSC_Alt fields.',
+      '4b. 4.7uF 0402: primary CL05A475MP5NRNC C23733 (10V X5R, OUT OF STOCK at LCSC 2026-10-19); second source CL05A475KP5NRNC C368809 (10V X5R +/-10%, 1,355,750 in stock) in MPN_Alt/LCSC_Alt on all 12 parts.',
       '5. VDD_USB_CAP C82 = 10uF read from a partly overlapped label on EVK SCH-31357 rev A2 (EVKB B1 files need NXP login).',
       '6. Crystal load caps need bench tuning; drive level in-circuit not measured.']
 open(os.path.join(ROOT, 'docs/pin-map.md'), 'w').write('\n'.join(L) + '\n')
