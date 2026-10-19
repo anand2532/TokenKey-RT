@@ -1,5 +1,5 @@
 {
- "board_ref": "eb4495a",
+ "board_ref": "e2e5ff9",
  "process": "FDM",
  "outer_mm": [
   55.0,
@@ -18,8 +18,7 @@
   "knob_top": 26.0,
   "shaft_top": 24.5
  },
- "j2_y": 4.4,
- "j2_board_ref_y": 5.0,
+ "j2_y": 5.0,
  "encoder": {
   "body_h": 4.5,
   "shaft_tip": 24.5,
@@ -65,7 +64,7 @@
  "mass_total_g": 30.4,
  "mass_target_g": 120.0,
  "checks_bad": 0,
- "fpc_plan_clearance": 2.04,
- "module_plan_clearance": 1.84,
+ "fpc_plan_clearance": 1.44,
+ "module_plan_clearance": 1.24,
  "board_unknown_heights": []
 }

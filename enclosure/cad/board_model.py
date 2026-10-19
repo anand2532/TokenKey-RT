@@ -106,8 +106,6 @@ def build():
                 out[f"{ref} ({name.split('_')[0]}{' DNP' if f['dnp'] else ''})"] = kbox(f["crtyd"], z0, z1)
         if ref != "J3" and not name.startswith("MountingHole"):   # J3 TC2030 holes take no leads
             for (x, y, d) in f["tht"]:
-                if ref == "J2":
-                    y += P.J2_DY
                 out.setdefault("THT tails", None)
                 t = cyl(*P.K(x, y), -P.PCB_T - P.THT_TAIL, -P.PCB_T, d + 0.4)
                 out["THT tails"] = t if out["THT tails"] is None else out["THT tails"].union(t)

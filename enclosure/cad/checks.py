@@ -100,5 +100,5 @@ def report(rows, special, extra):
               f"inside the outline, no wrap; modelled at the worst case) -> USB-C body, plan: "
               f"**{extra['fpc_plan_clearance']:+.2f} mm** "
               f"({'CLASH (< %.1f mm)' % P.CLASH_MIN if extra['fpc_plan_clearance'] < P.CLASH_MIN else 'ok'})",
-              f"- J2 pin-row y {P.J2_Y} (board_ref {P.J2_BOARD_Y}; shift {P.J2_DY:+.2f})"]
+              f"- J2 pin-row y {P.J2_Y} (from board_ref {P.BOARD['source_ref']})"]
     return "\n".join(lines) + "\n", bad

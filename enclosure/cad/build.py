@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Regenerate the Direction A puck: STEP/STL per part, assembly STEP, interference report, renders.
 
-  python3 build.py              # default (shaft 20, knob 14, header 3.0, module 2.65)
-  TK_SHAFT_TRIM=2.5 TK_KNOB_H=14 TK_DKEY_MARGIN=0.5 python3 build.py --check-only   # trimmed-shaft variant
-Environment overrides: TK_PROCESS (FDM|SLA), TK_HEADER, TK_MODULE_T, TK_J2_Y, TK_SHAFT_TRIM, TK_KNOB_H,
+  python3 build.py              # default (stock EC11E shaft, 16.5 mm knob, header 3.0, module 2.65)
+Environment overrides: TK_PROCESS (FDM|SLA), TK_HEADER, TK_MODULE_T, TK_SHAFT_TRIM (evaluation only), TK_KNOB_H,
 TK_KNOB_D, TK_DKEY_MARGIN,
 TK_KNOB_INSERT (none|sleeve|setscrew).
 """
@@ -51,7 +50,7 @@ def main():
         z=dict(desk=round(P.Z_DESK, 3), floor_top=P.Z_FLOOR_TOP, pcb_bottom=P.Z_PCB_BOT, oled_top=P.OLED_TOP,
                lid_under=P.LID_UNDER, lid_top=P.LID_TOP, collar_top=P.COLLAR_TOP,
                knob_bottom=P.KNOB_BOTTOM, knob_top=P.KNOB_TOP, shaft_top=P.SHAFT_TOP),
-        j2_y=P.J2_Y, j2_board_ref_y=P.J2_BOARD_Y,
+        j2_y=P.J2_Y,
         encoder=dict(body_h=P.ENC_BODY[2], shaft_tip=P.SHAFT_TOP, shaft_tip_pressed=P.SHAFT_TOP - P.ENC_PUSH,
                      flat_start=P.FLAT_START, trim=P.SHAFT_TRIM,
                      body_to_lid_underside=round(P.LID_UNDER - P.ENC_BODY[2], 2)),

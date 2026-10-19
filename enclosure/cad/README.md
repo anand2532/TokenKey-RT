@@ -1,6 +1,6 @@
 # enclosure/cad: Direction A "puck", parametric CadQuery model
 
-Issue #42; follow-ups #52 (FPC bend vs USB-C) and #54 (EC11E heights). Board reference: Layout #31 commit `eb4495a` (`board_ref.json`), with **J2 overridden to y 4.4** (see below). Prototype for FDM/SLA, modelled **without draft**. For injection moulding:
+Issue #42; follow-ups #52 (FPC bend vs USB-C) and #54 (EC11E heights). Board reference: **main `e2e5ff9`** (PR #49 merged; `board_ref.json`). J2 is at y 5.0. Prototype for FDM/SLA, modelled **without draft**. For injection moulding:
 - add **1–2° draft** on every face parallel to the pull (Z);
 - use **3°** on textured faces (≥ 5° for medium/heavy texture);
 - core out the bosses, and keep ribs at 40–60 % of the wall.
@@ -9,8 +9,7 @@ Issue #42; follow-ups #52 (FPC bend vs USB-C) and #54 (EC11E heights). Board ref
 ```
 python3 -m venv venv && venv/bin/pip install cadquery trimesh matplotlib shapely networkx scipy rtree
 venv/bin/python build.py          # or: make PY=venv/bin/python
-make variant-trim                # shaft trimmed 2.5 mm + 14 mm knob, check only (not exported)
-TK_PROCESS=SLA TK_KNOB_INSERT=setscrew TK_HEADER=3.0 TK_MODULE_T=2.65 TK_J2_Y=4.4 TK_KNOB_H=16.5 venv/bin/python build.py
+TK_PROCESS=SLA TK_KNOB_INSERT=setscrew TK_HEADER=3.0 TK_MODULE_T=2.65 TK_KNOB_H=16.5 venv/bin/python build.py
 ```
 
 `build.py` writes:
@@ -28,10 +27,10 @@ python3 ../tools/board_extract.py TokenKey-RT.kicad_pcb raw.json
 python3 make_board_ref.py raw.json <sha> > board_ref.json
 ```
 
-## J2 position: pending PR #49
-- The CAD places J2's pin row at **y 4.4** (`J2_Y`, env `TK_J2_Y`): a 0.6 mm north shift from the `eb4495a` board ref (y 5.0). The whole module, the window, the locating posts and the J2 tails follow `J2_Y`.
-- **Pending #49.** PR #49 (head `b873acc`, checked 2026-10-19) still has J2 at y 5.0, and it isn't merged into main (`b23a696`). When #49 merges with J2 at 4.4, regenerate `board_ref.json` from main and set `J2_Y` back to follow the board (that is, `J2_DY = 0`).
-- With the far-edge FPC model (#52), J2 at 4.4 is **no longer needed for USB-C clearance**: J2 at 5.0 would still give the FPC +1.44 mm and the module PCB +1.24 mm. It is kept on PM instruction, and it causes no new conflicts: the module's north edge is at KiCad y 2.96, the post shoulders are inside the wall, and H1/H2, D1, SW2 and the buttons are clear.
+## Board reference
+- `board_ref.json` was regenerated from **main `e2e5ff9`** (PR #49 merged) on 2026-10-19.
+- Against `eb4495a`/`b23a696`, **J2 (16.34, 5.0), L2 (TDK VLS3015CX at (9.15, 21.4), 1.5 mm) and the OLED outline graphics are unchanged**. The only J2 change is its Value text. Other changes are net names on unconnected pads, with no geometry change.
+- `J2_Y` follows the board (5.0, PM final). The module, window, locating posts and header all follow J2 pin 1.
 
 ## Frame
 - **X** = KiCad x (east).
@@ -58,13 +57,12 @@ python3 make_board_ref.py raw.json <sha> > board_ref.json
 | Stack (z, PCB top = 0) | desk −5.7, floor top −4.1, PCB bottom −1.6, OLED top 5.65, lid underside 6.0, lid top 7.5 |
 | EC11E18244A5 (Alps drawing No.3) | Body 4.5 mm tall, **no bushing**. Shaft Ø6, round up to 14.5 mm above the PCB, then D-flat (4.5 across) up to the **tip at 24.5 mm** (23.0 pressed; 1.5 mm push). Body to lid underside 1.5 mm, so the lid needs no relief |
 | Knob, default: stock shaft, 16.5 mm knob | Bottom 9.5 / top **26.0 mm above the PCB = 31.7 mm above the desk** (32.4 with the grip cord). D-key from 15.5; **engagement 9.0 mm**. 16.5 is the minimum height that covers the stock tip (24.5 + 0.5 clearance + 1.0 skin) |
-| Knob, trim variant: shaft cut 2.5 mm, 14 mm knob | Tip 22.0; top **23.5 / 29.2 above the desk**; D-key from 15.0; engagement 7.0 mm. It modifies the bought part, so it is check-only (`make variant-trim`) |
 | Collar and push | Collar top 12.5, overlapping the knob skirt by 3.0 mm at rest. At full push: skirt to lid 0.5 mm, pocket ceiling to collar top 1.5 mm |
 | Button cap / light pipe | Cap 6.4 mm from the plunger nub to the cap top; pipe 6.5 mm |
 | USB-C | Overmold face stops 1.1 mm short of the receptacle face (check with real cables) |
 | Mass (FDM PETG, steel ballast) | **≈ 30 g**, against the 120 g design parameter (see research.md, Direction A) |
-| Interference | 309 pairs within 3 mm checked: **0 part clashes, 0 tight** (default and trim variant). Designed fits are listed in the report |
-| **FPC bend vs USB-C (#52)** | **Resolved.** The bend is on the module's **far edge**, which is the south side facing J1, opposite the header edge. It is modelled inside the outline (0.4 ± 0.2 mm, worst case 0.2), 14.5 wide, centred, from the glass far edge to the outline, z 4.2–5.65, with no wrap. Clearances to the J1 body: FPC **+2.04 mm in plan** (2.25 in 3D), module PCB +1.84 mm. Lid underside over the bend 0.35 mm. The bend is under solid lid, 4.0 mm south of the window edge at the lid underside (2.5 mm at the chamfered outer face), and far inside the south wall |
+| Interference | 309 pairs within 3 mm checked: **0 part clashes, 0 tight**. Designed fits are listed in the report |
+| **FPC bend vs USB-C (#52)** | **Resolved.** The bend is on the module's **far edge**, which is the south side facing J1, opposite the header edge. It is modelled inside the outline (0.4 ± 0.2 mm, worst case 0.2), 14.5 wide, centred, from the glass far edge to the outline, z 4.2–5.65, with no wrap. Clearances to the J1 body: FPC **+1.44 mm in plan** (1.72 in 3D), module PCB +1.24 mm. Lid underside over the bend 0.35 mm. The bend is under solid lid, 4.0 mm south of the window edge at the lid underside (2.5 mm at the chamfered outer face), and far inside the south wall |
 
 ## Parameters (`params.py`)
 | Name | Default | Notes |
@@ -73,14 +71,14 @@ python3 make_board_ref.py raw.json <sha> > board_ref.json
 | `OLED_MODULE_T` | 2.65 | so OLED top = 5.65 (env `TK_MODULE_T`) |
 | `LID_GLASS_CLR` | 0.35 | lid underside above the glass (PM 0.3–0.4) |
 | `OLED_BACK_FEATURE`, `OLED_BACK_BAND` | 1.0, y +9.3…+12.3 | back-side block, modelled over the full module width |
-| `J2_Y` | 4.4 | J2 pin-row y (KiCad); board ref 5.0; **pending PR #49** (env `TK_J2_Y`) |
+| `J2_Y` | 5.0 | J2 pin-row y (KiCad), read from `board_ref.json` |
 | `FPC_BEND_W`, `FPC_BEND_INSET`, `FPC_BEND_TOL` | 14.5, 0.4, 0.2 | far-edge bend, inside the module outline, no wrap |
 | `WALL` | 2.0 FDM / 1.6 SLA | env `TK_PROCESS` |
 | `LID_T`, `FLOOR_T` | 1.5, 1.6 | |
 | `BOARD_CLR`, `UNDER_BOARD`, `THT_TAIL` | 0.5, 2.5, 1.5 | |
 | `CORNER_R`, `INNER_R` | 3.5, 1.5 | |
 | `ENC_BODY` | 12 × 12 × 4.5 | EC11E (11.7 × 12 per drawing), no bushing |
-| `SHAFT_L`, `SHAFT_TRIM` | 20 (from the body top), 0 | tip 24.5 above the PCB; trim variant 2.5 (env `TK_SHAFT_TRIM`) |
+| `SHAFT_L`, `SHAFT_TRIM` | 20 (from the body top), 0 | tip 24.5 above the PCB. `SHAFT_TRIM` stays 0: no modifications to purchased parts (env `TK_SHAFT_TRIM` for evaluation only) |
 | `ENC_SHAFT_D`, `ENC_FLAT`, `ENC_FLAT_L` | 6.0, 4.5, 10.0 | D-flat from 14.5 to the tip |
 | `ENC_HOLE_D` | 7.0 | lid/collar hole, 0.5 mm radial: the shaft never touches the lid |
 | `COLLAR_OD`, `COLLAR_H` | 11.0, 5.0 | bearing boss on the lid, top at 12.5 |
@@ -104,6 +102,12 @@ The EC11E18244A5 has no bushing, so the lid can't clamp to a threaded bushing. T
 - The **knob's bottom pocket runs radially on the boss OD** (0.15 mm clearance) and takes side loads into the lid.
 - The shaft only carries torque and push, through the D-key.
 - **Why not a bushing or bearing on the shaft:** the encoder is soldered to the PCB, and the lid is located by the screws and posts. A close fit around the rotating shaft would over-constrain the shaft against the lid tolerance (±0.2–0.3 mm on FDM), causing binding and extra friction on the detents and the push. With the knob-on-boss bearing, lid misalignment only shifts the knob's running fit.
+
+## Measured option (not built): trimmed shaft + 14 mm knob
+For reference only. The PM default is the stock shaft with the 16.5 mm knob, and purchased parts are not modified.
+- Cutting 2.5 mm off the shaft (tip 22.0) allows a 14 mm knob with the D-key from 15.0.
+- Engagement would be 7.0 mm, and the knob top 23.5 above the PCB / 29.2 above the desk.
+- Evaluated with `TK_SHAFT_TRIM=2.5 TK_KNOB_H=14 TK_DKEY_MARGIN=0.5 python build.py --check-only`: 0 CLASH/TIGHT. Nothing is exported.
 
 ## Assumptions to verify on parts
 - EC11E heights per Alps drawing No.3 (body 4.5, tip 24.5 above the PCB, flat from 14.5); measure one part.

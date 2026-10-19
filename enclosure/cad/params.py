@@ -2,7 +2,7 @@
 
 CAD frame: X = KiCad x (east), Y = 40 - KiCad y (north up; the board's SOUTH edge, J1/USB-C,
 is the REAR of the device at Y = 0), Z = 0 at the main-PCB TOP surface, +Z up.
-Board reference: Layout #31 commit eb4495a (see board_ref.json).
+Board reference: main e2e5ff9 (PR #49 merged; see board_ref.json).
 
 Injection-moulding note (production only): add 1-2 deg draft on all walls/bosses parallel to
 the pull direction (Z), 3 deg on textured faces; the FDM/SLA prototype is modelled draft-free.
@@ -35,10 +35,6 @@ OLED_PCB_T = 1.2
 OLED_BACK_FEATURE = 1.0   # back-side block, band y +9.3..+12.3 from pin 1 (x unknown -> full width)
 OLED_BACK_BAND = (9.3, 12.3)
 LID_GLASS_CLR = 0.35      # lid underside above OLED top (PM: 0.3-0.4)
-J2_Y = float(os.environ.get("TK_J2_Y", 4.4))   # J2 pin-row y (KiCad). 4.4 = Layout PR #49 target, PENDING:
-                          # board_ref.json (eb4495a) and PR #49 head b873acc still have 5.0. The module,
-                          # window, locating posts, header and J2 THT tails all follow this value.
-J2_PIN1 = None            # (J2 pad-1 x from board_ref, J2_Y)
 MOD_W, MOD_H, PIN1_FROM_LEFT, PIN1_FROM_EDGE = 27.30, 27.80, 9.84, 1.44
 GLASS_X, GLASS_Y = (-8.60, 16.14), (3.43, 20.33)
 WINDOW = (22.74, 11.86)                # VA, opening at the lid underside
@@ -84,7 +80,7 @@ USB_RIB_W, USB_RIB_GAP, USB_RIB_LEN = 1.2, 0.3, 5.0
 # ~23.0 pressed); dia 6, round for the first 7 mm, D-flat (4.5 across) for the last 10 mm.
 ENC_BODY = (12.0, 12.0, 4.5)        # 11.7 x 12 -> 12 x 12 (orientation not re-checked), height above PCB
 SHAFT_L = 20.0                      # from the body top (EC11E18244A5, kept by PM)
-SHAFT_TRIM = float(os.environ.get("TK_SHAFT_TRIM", 0.0))   # optional cut-down of the shaft tip (variant)
+SHAFT_TRIM = float(os.environ.get("TK_SHAFT_TRIM", 0.0))   # 0 = stock part (PM: no purchased-part mods); evaluation only
 ENC_SHAFT_D, ENC_FLAT, ENC_FLAT_L = 6.0, 4.5, 10.0   # D-flat across-flats 4.5, last 10 mm (untrimmed)
 ENC_PUSH = 1.5
 ENC_LID_RELIEF_CLR = 0.3            # lid relief over the body, only cut if body + clr > lid underside
@@ -166,9 +162,8 @@ def fp(ref):
 
 
 _j2 = fp("J2")
-J2_BOARD_Y = _j2["tht"][0][1]                      # 5.0 at eb4495a
-J2_DY = J2_Y - J2_BOARD_Y                         # applied to everything that follows J2
-J2_PIN1 = (_j2["tht"][0][0], J2_Y)
+J2_Y = _j2["tht"][0][1]                            # J2 pin-row y (KiCad), from board_ref: 5.0 (PM final)
+J2_PIN1 = (_j2["tht"][0][0], J2_Y)                # module, window, posts and header all follow pin 1
 _sw2 = fp("SW2")
 _mp = [p for p in _sw2["tht"] if p[2] > 2.0]
 ENC_AXIS_K = (sum(p[0] for p in _mp) / len(_mp), sum(p[1] for p in _mp) / len(_mp))
