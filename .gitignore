@@ -28,3 +28,4 @@ __pycache__/
 node_modules/
 
 # NOTE: fab/ outputs are intentionally tracked; do not ignore them.
+hardware/schematic/tools/netlist.json

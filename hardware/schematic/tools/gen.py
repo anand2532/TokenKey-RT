@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """Generate TokenKey-RT hierarchical KiCad 9 schematic + project libs from one netlist description."""
-import json, uuid, math, os
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+import re, json, uuid, math, os
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = HERE   # repo root (or draft root): first ancestor that contains hardware/schematic
+while not os.path.isdir(os.path.join(ROOT, 'hardware', 'schematic')) and os.path.dirname(ROOT) != ROOT: ROOT = os.path.dirname(ROOT)
 SCH = os.path.join(ROOT, 'hardware/schematic'); LIB = os.path.join(ROOT, 'hardware/libraries')
 PROJ = 'TokenKey-RT'
 U = lambda: str(uuid.uuid4())
+OLD = {}   # key -> uuid read from the previously generated files, so regeneration keeps UUIDs stable
+def UK(key):
+    return OLD.get(key) or U()
 G = 2.54
 def q(s): return '"' + str(s).replace('\\', '\\\\').replace('"', '\\"') + '"'
 def fnt(hide=False, just=None):
@@ -65,7 +70,7 @@ sym('TC2030_SWD', 'J', [[('1', 'VCC', 'passive', 'L'), ('5', 'GND', 'passive', '
                           ('2', 'SWDIO', 'passive', 'R'), ('4', 'SWCLK', 'passive', 'R'), ('6', 'SWO', 'passive', 'R')]])
 
 # ---------- RT1062 multi-unit symbol from datasheet Tables 82/83 (10x10 MAPBGA)
-B = json.load(open(os.path.join(ROOT, 'tools/rt1062_10x10_balls.json')))
+B = json.load(open(os.path.join(HERE, 'rt1062_10x10_balls.json')))
 func, sup = B['func'], B['sup']
 def rowkey(ball): return ('ABCDEFGHJKLMNP'.index(ball[0]), int(ball[1:]))
 PWR_IN = {'DCDC_IN', 'DCDC_IN_Q', 'VDD_HIGH_IN', 'VDD_SNVS_IN', 'NVCC_EMC', 'NVCC_GPIO', 'NVCC_SD0', 'NVCC_SD1', 'VDDA_ADC_3P3', 'VDD_SOC_IN'}
@@ -99,8 +104,8 @@ SHEETS = {k: [] for k in ['power', 'mcu', 'flash', 'usb', 'ui', 'debug']}
 TITLES = dict(power='Power: VBUS in, 3V3 LDO / DNP buck, RT1062 DCDC + decoupling', mcu='MCU: MIMXRT1062DVL6B, clocks, reset, boot',
               flash='FlexSPI A boot flash + DNP FlexSPI B PSRAM', usb='USB-C device, CC Rd, ESD', ui='UI: OLED, encoder, buttons, LED',
               debug='Debug: TC2030-NL SWD, UART/reset test pads')
-def part(sheet, ref, symn, value, fp, mpn, lcsc, nets, dnp=False, note='', units=None, alt=None):
-    SHEETS[sheet].append(dict(ref=ref, sym=symn, value=value, fp=fp, mpn=mpn, lcsc=lcsc, nets=nets, dnp=dnp, note=note, units=units, alt=alt))
+def part(sheet, ref, symn, value, fp, mpn, lcsc, nets, dnp=False, note='', units=None, alt=None, extra=None):
+    SHEETS[sheet].append(dict(ref=ref, sym=symn, value=value, fp=fp, mpn=mpn, lcsc=lcsc, nets=nets, dnp=dnp, note=note, units=units, alt=alt, extra=extra or []))
 cnt = {'U': 1}   # U1 reserved for the MCU
 def nref(p):
     cnt[p] = cnt.get(p, 0) + 1; return f'{p}{cnt[p]}'
@@ -108,6 +113,7 @@ def R(sheet, val, a, b, dnp=False, note=''):
     mpn, lcsc = RVAL[val]; part(sheet, nref('R'), 'R', val, FP['R0402'], mpn, lcsc, {'1': a, '2': b}, dnp, note)
 def C(sheet, val, a, b='GND', dnp=False, note=''):
     mpn, lcsc, f = CVAL[val]; part(sheet, nref('C'), 'C', val, FP[f], mpn, lcsc, {'1': a, '2': b}, dnp, note, alt=CALT.get(val))
+FP_ONLY = [('BOM_Note', 'Footprint only - nothing to buy (no component placed; exclude from assembly)')]
 def FLAG(sheet, net): part(sheet, nref('#FLG'), 'PWR_FLAG', 'PWR_FLAG', '', 'virtual', 'N/A', {'1': net})
 
 # ---- power
@@ -116,7 +122,7 @@ part('power', nref('U'), 'AP2112K-3.3', 'AP2112K-3.3TRG1', FP['SOT235'], 'AP2112
      {'1': 'VBUS', '3': 'VBUS', '2': 'GND', '5': '3V3', '4': None}, note='Fitted 3V3 source (600 mA LDO)')
 C('power', '1uF', 'VBUS', note='LDO input'); C('power', '10uF', '3V3', note='LDO output bulk')
 part('power', nref('U'), 'TLV62569DBV', 'TLV62569DBVR', FP['SOT235'], 'TLV62569DBVR', 'C141836',
-     {'4': 'VBUS', '1': 'VBUS', '2': 'GND', '3': 'BUCK_SW', '5': 'BUCK_FB'}, dnp=True, note='DNP buck fallback; fit with L2/R/C and remove U2')
+     {'4': 'VBUS', '1': 'VBUS', '2': 'GND', '3': 'BUCK_SW', '5': 'BUCK_FB'}, dnp=True, note='DNP buck fallback; fit with L1/R/C and remove U2')
 part('power', nref('L'), 'L', '2.2uH', FP['L4020'], 'SWPA4020S2R2MT', 'C83423', {'1': 'BUCK_SW', '2': '3V3'}, dnp=True, note='DNP buck inductor')
 R('power', '100k', '3V3', 'BUCK_FB', dnp=True, note='FB top: Vout=0.6*(1+100k/22k)=3.33 V')
 R('power', '22k', 'BUCK_FB', 'GND', dnp=True, note='FB bottom')
@@ -173,8 +179,8 @@ R('mcu', '10k', '3V3', 'POR_B', note='POR_B pull-up'); C('mcu', '100nF', 'POR_B'
 R('mcu', '1k', 'JTAG_MOD', 'GND', note='JTAG_MOD low = SWD/common debug (DS Table 3)')
 R('mcu', '10k', 'BOOT_MODE1', '3V3', note='BOOT_MODE1 high => mode 10 internal boot')
 R('mcu', '10k', 'BOOT_MODE0', 'GND', note='BOOT_MODE0 defined low when Q1 off')
-part('mcu', nref('Q'), 'AO3401A', 'AO3401A', FP['SOT23'], 'AO3401A', 'C15127', {'1': 'BOOT_MODE1', '2': '3V3', '3': 'BOOT_MODE0'},
-     note='Press SW_BOOT: BM1=0 and Q1 on => BM0=1 => mode 01 serial downloader')
+part('mcu', nref('Q'), 'AO3401A', 'AO3401A', FP['SOT23'], 'AO3401A', 'C15127', {'1': 'BOOT_MODE1', '2': '3V3', '3': 'BOOT_MODE0_Q'},
+     note='Press SW_BOOT: BM1=0 and Q1 on => BM0=1 (via R_S) => mode 01 serial downloader')
 part('mcu', nref('SW'), 'SW_Push', 'SW_BOOT', FP['SW_B3U'], 'B3U-1000P', 'C231329', {'1': 'BOOT_MODE1', '2': 'GND'}, note='Bottom side')
 
 # ---- flash
@@ -194,7 +200,7 @@ part('usb', nref('J'), 'USB_C_USB2_16P', 'USB-C', 'Connector_USB:USB_C_Receptacl
 R('usb', '5.1k', 'CC1', 'GND', note='Rd'); R('usb', '5.1k', 'CC2', 'GND', note='Rd')
 part('usb', nref('U'), 'USBLC6-2SC6', 'USBLC6-2SC6', FP['SOT236'], 'USBLC6-2SC6', 'C7519',
      {'1': 'USB_DP', '6': 'USB_DP', '3': 'USB_DN', '4': 'USB_DN', '5': 'VBUS', '2': 'GND'}, note='Place at J1')
-C('usb', '10uF', 'VBUS', note='VBUS bulk at connector')
+C('usb', '4.7uF', 'VBUS', note='VBUS bulk at connector (PM review: 4.7uF)')
 
 # ---- ui
 part('ui', nref('J'), 'OLED_I2C_4P', 'OLED 0.96in 128x64 I2C (SSD1315)', 'Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical',
@@ -213,10 +219,13 @@ R('ui', '1k', 'LED_STAT', 'LED_A')
 part('ui', nref('D'), 'LED', 'RED', FP['LED0603'], 'KT-0603R', 'C2286', {'2': 'LED_A', '1': 'GND'}, note='Status LED')
 
 # ---- debug
-part('debug', nref('J'), 'TC2030_SWD', 'TC2030-NL', 'Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical', 'TC2030-NL (footprint only)', 'N/A',
-     {'1': '3V3', '5': 'GND', '3': 'POR_B', '2': 'SWDIO', '4': 'SWCLK', '6': 'SWO'}, note='Tag-Connect TC2030-CTX mapping')
+part('debug', nref('J'), 'TC2030_SWD', 'TC2030-NL', 'Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical', 'N/A - footprint only', 'N/A - footprint only',
+     {'1': '3V3', '5': 'GND', '3': 'POR_B', '2': 'SWDIO', '4': 'SWCLK', '6': 'SWO'}, note='Tag-Connect TC2030-CTX mapping',
+     extra=FP_ONLY)
 for n in ['UART_TX', 'UART_RX', 'GND', 'POR_B', 'ONOFF']:
-    part('debug', nref('TP'), 'TestPoint', 'TP_' + n, FP['TP'], 'Test pad (no part)', 'N/A', {'1': n})
+    part('debug', nref('TP'), 'TestPoint', 'TP_' + n, FP['TP'], 'N/A - footprint only', 'N/A - footprint only', {'1': n}, note='Bare copper test pad', extra=FP_ONLY)
+# R_S added in PM review; numbered last so existing references do not shift
+R('mcu', '1k', 'BOOT_MODE0_Q', 'BOOT_MODE0', note='R_S: series 1k Q1 drain -> BOOT_MODE0 (F11); limits current if F11 is driven as GPIO. Q1 on: BM0 = 3.3*10k/11k = 3.0 V')
 
 # ---------------------------------------------------------------- symbol lib text
 def unit_geom(pins, hide_names):
@@ -285,15 +294,48 @@ for ri, r in enumerate(rows):
         x = (c - 7.5) * 0.65; y = (ri - 6.5) * 0.65
         fpl.append(f'(pad "{r}{c}" smd circle (at {x:.3f} {y:.3f}) (size 0.325 0.325) (layers "F.Cu" "F.Paste" "F.Mask") (solder_mask_margin 0.0625) (uuid {q(U())}))')
 fpl.append(')')
-open(os.path.join(LIB, 'TokenKey.pretty', 'NXP_MAPBGA-196_10x10mm_Layout14x14_P0.65mm.kicad_mod'), 'w').write('\n'.join(fpl) + '\n')
+_fpp = os.path.join(LIB, 'TokenKey.pretty', 'NXP_MAPBGA-196_10x10mm_Layout14x14_P0.65mm.kicad_mod')
+_nu = lambda t: re.sub(r'\(uuid "[^"]+"\)', '', t)
+_new = '\n'.join(fpl) + '\n'
+if not os.path.exists(_fpp) or _nu(open(_fpp).read()) != _nu(_new): open(_fpp, 'w').write(_new)   # keep UUIDs if unchanged
 
 # ---------------------------------------------------------------- write schematics
+SHEET_NOTES = {'mcu': ['WAKEUP (L6) and ONOFF (M6) are left unconnected and rely on their internal 100k pull-ups '
+                       '(IMXRT1060CEC Rev 4 Table 83: reset and default state Input, 100K PU). ONOFF also on TP5.']}
+def _load_old():
+    import re as _re
+    def rd(n):
+        try: return open(os.path.join(SCH, n)).read()
+        except FileNotFoundError: return ''
+    s = rd('TokenKey-RT.kicad_sch')
+    m = _re.search(r'^\(kicad_sch [^\n]*?\(uuid "([^"]+)"\)', s)
+    if m: OLD['root'] = m.group(1)
+    for m in _re.finditer(r'\(sheet \(at [^\n]*?\(uuid "([^"]+)"\) \(property "Sheetname" "([^"]+)"', s): OLD[('sheet', m.group(2))] = m.group(1)
+    m = _re.search(r'\(text "TokenKey RT - root[^\n]*\(uuid "([^"]+)"\)\)', s)
+    if m: OLD['roottext'] = m.group(1)
+    for sn in SHEETS:
+        s = rd(sn + '.kicad_sch'); ti = 0
+        m = _re.search(r'^\(kicad_sch [^\n]*?\(uuid "([^"]+)"\)', s)
+        if m: OLD[('file', sn)] = m.group(1)
+        for line in s.splitlines():
+            if line.startswith('(symbol (lib_id'):
+                ref = _re.search(r'\(property "Reference" "([^"]+)"', line).group(1); un = _re.search(r'\(unit (\d+)\)', line).group(1)
+                OLD[('sym', sn, ref, un)] = _re.search(r'\(dnp \w+\) \(uuid "([^"]+)"\)', line).group(1)
+                for pm in _re.finditer(r'\(pin "([^"]+)" \(uuid "([^"]+)"\)\)', line): OLD[('pin', sn, ref, un, pm.group(1))] = pm.group(2)
+            elif line.startswith('(global_label'):
+                m = _re.match(r'\(global_label "([^"]*)" \(shape passive\) \(at (\S+) (\S+) .*?\(uuid "([^"]+)"\)', line)
+                OLD[('gl', sn, m.group(1), m.group(2), m.group(3))] = m.group(4)
+            elif line.startswith('(no_connect'):
+                m = _re.match(r'\(no_connect \(at (\S+) (\S+)\) \(uuid "([^"]+)"\)', line); OLD[('nc', sn, m.group(1), m.group(2))] = m.group(3)
+            elif line.startswith('(text '):
+                OLD[('text', sn, ti)] = _re.search(r'\(uuid "([^"]+)"\)\)$', line).group(1); ti += 1
+_load_old()
 VER = '(version 20250114) (generator "eeschema") (generator_version "9.0")'
-ROOT_UUID = U()
-sheet_uuid = {s: U() for s in SHEETS}
-def glabel(net, x, y, side):
+ROOT_UUID = UK('root')
+sheet_uuid = {s: UK(('sheet', s)) for s in SHEETS}
+def glabel(net, x, y, side, sname):
     ang, just = (180, 'right') if side == 'L' else (0, 'left')
-    return (f'(global_label {q(net)} (shape passive) (at {x:.2f} {y:.2f} {ang}) (fields_autoplaced yes) {fnt(False, just)} (uuid {q(U())})'
+    return (f'(global_label {q(net)} (shape passive) (at {x:.2f} {y:.2f} {ang}) (fields_autoplaced yes) {fnt(False, just)} (uuid {q(UK(("gl", sname, net, f"{x:.2f}", f"{y:.2f}")))})'
             f' (property "Intersheetrefs" "${{INTERSHEET_REFS}}" (at {x:.2f} {y:.2f} 0) {fnt(True)}))')
 def write_sheet(sname, page):
     items = []; used = set()
@@ -314,11 +356,12 @@ def write_sheet(sname, page):
                      ('Footprint', p['fp'], 0, hb - 3.81, True), ('Datasheet', '', 0, 0, True), ('Description', p['note'], 0, 0, True),
                      ('MPN', p['mpn'], 0, 0, True), ('LCSC', p['lcsc'], 0, 0, True)]
             if p.get('alt'): props += [('MPN_Alt', p['alt'][0], 0, 0, True), ('LCSC_Alt', p['alt'][1], 0, 0, True)]
+            props += [(k, v, 0, 0, True) for k, v in p['extra']]
             pr = ' '.join(f'(property {q(k)} {q(v)} (at {sx+dx:.2f} {sy-dy:.2f} 0) {fnt(hd)})' for k, v, dx, dy, hd in props)
-            pinuu = ' '.join(f'(pin {q(pt[0])} (uuid {q(U())}))' for pt in pts)
+            pinuu = ' '.join(f'(pin {q(pt[0])} (uuid {q(UK(("pin", sname, p["ref"], str(un), pt[0])))}))' for pt in pts)
             lib_id = 'TokenKey:' + p['sym']
             items.append(f'(symbol (lib_id {q(lib_id)}) (at {sx:.2f} {sy:.2f} 0) (unit {un}) (exclude_from_sim no) (in_bom {"no" if p["sym"]=="PWR_FLAG" else "yes"}) '
-                         f'(on_board {"no" if p["sym"]=="PWR_FLAG" else "yes"}) (dnp {"yes" if p["dnp"] else "no"}) (uuid {q(U())}) {pr} {pinuu} '
+                         f'(on_board {"no" if p["sym"]=="PWR_FLAG" else "yes"}) (dnp {"yes" if p["dnp"] else "no"}) (uuid {q(UK(("sym", sname, p["ref"], str(un))))}) {pr} {pinuu} '
                          f'(instances (project {q(PROJ)} (path {q("/"+ROOT_UUID+"/"+sheet_uuid[sname])} (reference {q(p["ref"])}) (unit {un})))))')
             for num, px, py, side in pts:
                 net = p['nets'].get(num, '__missing__')
@@ -326,13 +369,15 @@ def write_sheet(sname, page):
                 ax, ay = sx + px, sy - py
                 stype = [pp for pp in SYMS[p['sym']]['units'][un - 1] if pp[0] == num][0][2]
                 if net is None:
-                    if stype != 'no_connect': items.append(f'(no_connect (at {ax:.2f} {ay:.2f}) (uuid {q(U())}))')
+                    if stype != 'no_connect': items.append(f'(no_connect (at {ax:.2f} {ay:.2f}) (uuid {q(UK(("nc", sname, f"{ax:.2f}", f"{ay:.2f}")))}))')
                 else:
-                    items.append(glabel(net, ax, ay, side))
+                    items.append(glabel(net, ax, ay, side, sname))
             colw = max(colw, w); y += h
+    for ti, t in enumerate(SHEET_NOTES.get(sname, [])):
+        items.append(f'(text {q(t)} (exclude_from_sim no) (at 30.48 {22.86 + ti * 5.08:.2f} 0) {fnt(False, "left")} (uuid {q(UK(("text", sname, ti)))}))')
     libs = '\n'.join(sym_text(n, 'TokenKey:') for n in sorted(used))
     title = f'(title_block (title {q(TITLES[sname])}) (company "TokenKey RT") (rev "A0-draft") (comment 1 "Generated by tools/gen.py - frozen baseline pin map"))'
-    txt = f'(kicad_sch {VER} (uuid {q(U())}) (paper {q(paper)}) {title}\n(lib_symbols\n{libs}\n)\n' + '\n'.join(items) + '\n)\n'
+    txt = f'(kicad_sch {VER} (uuid {q(UK(("file", sname)))}) (paper {q(paper)}) {title}\n(lib_symbols\n{libs}\n)\n' + '\n'.join(items) + '\n)\n'
     open(os.path.join(SCH, f'{sname}.kicad_sch'), 'w').write(txt)
 pages = {}
 for i, s in enumerate(SHEETS, 2):
@@ -346,8 +391,8 @@ for i, s in enumerate(SHEETS):
                   f'(property "Sheetfile" {q(s+".kicad_sch")} (at {sx:.2f} {sy+31.07:.2f} 0) {fnt(False, "left top")}) '
                   f'(instances (project {q(PROJ)} (path {q("/"+ROOT_UUID)} (page {q(str(pages[s]))})))))')
 note = ('(text "TokenKey RT - root sheet. Inter-sheet nets use global labels (same name = same net). '
-        'Frozen baseline: docs/pin-map.md. DNP: buck U3/L2/R/C, PSRAM U5 + R/C." (exclude_from_sim no) (at 30.48 20.32 0) '
-        f'{fnt(False, "left")} (uuid {q(U())}))')
+        'Frozen baseline: docs/pin-map.md. DNP: buck U3/L1/R/C, PSRAM U5 + R/C." (exclude_from_sim no) (at 30.48 20.32 0) '
+        f'{fnt(False, "left")} (uuid {q(UK("roottext"))}))')
 root = (f'(kicad_sch {VER} (uuid {q(ROOT_UUID)}) (paper "A4") (title_block (title "TokenKey RT - i.MX RT1062 USB accessory") (rev "A0-draft") (company "TokenKey RT"))\n'
         '(lib_symbols)\n' + note + '\n' + '\n'.join(sheets) + '\n(sheet_instances (path "/" (page "1")))\n(embedded_fonts no)\n)\n')
 open(os.path.join(SCH, f'{PROJ}.kicad_sch'), 'w').write(root)
@@ -356,5 +401,5 @@ open(os.path.join(SCH, 'fp-lib-table'), 'w').write('(fp_lib_table (version 7)\n 
 pro = {"meta": {"filename": f"{PROJ}.kicad_pro", "version": 3}, "schematic": {"legacy_lib_dir": "", "legacy_lib_list": []},
        "sheets": [[ROOT_UUID, "Root"]] + [[sheet_uuid[s], s] for s in SHEETS], "boards": [], "libraries": {"pinned_footprint_libs": [], "pinned_symbol_libs": []}}
 json.dump(pro, open(os.path.join(SCH, f'{PROJ}.kicad_pro'), 'w'), indent=2)
-json.dump({s: SHEETS[s] for s in SHEETS}, open(os.path.join(ROOT, 'tools/netlist.json'), 'w'), indent=1, default=str)
+json.dump({s: SHEETS[s] for s in SHEETS}, open(os.path.join(HERE, 'netlist.json'), 'w'), indent=1, default=str)
 print('parts', {s: len(v) for s, v in SHEETS.items()})
