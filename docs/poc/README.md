@@ -29,4 +29,5 @@ Analyses here cover:
 
 ## Index
 
-_No analyses yet._
+- [2026-10-19 Value assessment](2026-10-19-value-assessment.md): target users, problem size, competitors/substitutes, hardware rationale, willingness to pay, risks. **Recommendation: no-go on hardware spend for now; go on a software-only PoC with gates G1-G5.**
+- [2026-10-19 PoC experiment plan](2026-10-19-poc-experiment-plan.md): 2-4 week host-only prototype of the firmware algorithm, with variants vs provider-caching baseline and free proxies, and success criteria mapped to baseline spec §7.
