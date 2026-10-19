@@ -19,5 +19,6 @@
 | RTC clock | 32.768 kHz crystal |
 | Debug | Tag-Connect TC2030 for SWD, plus UART console pads |
 | Boot button | Bottom side of the PCB |
+| KiCad project location | 2026-10-19, TokenKey PM: the whole KiCad project (`TokenKey-RT.kicad_pro`, `.kicad_sch` plus sub-sheets, `.kicad_pcb`, `.kicad_dru`) lives in `hardware/schematic/`, because KiCad only links the `.kicad_sch` and `.kicad_pcb` that sit next to the `.kicad_pro`. `hardware/pcb/` removed. |
 
 All items remain subject to engineering verification per [baseline spec section 8](baseline-specs.md#8-design-constraints).

@@ -7,8 +7,7 @@ TokenKey RT is a compact USB-C desktop/laptop accessory built on the NXP i.MX RT
 | Path | Contents |
 |------|----------|
 | `docs/` | Specifications, design decisions and project documentation |
-| `hardware/schematic/` | KiCad schematic |
-| `hardware/pcb/` | KiCad 4-layer PCB layout |
+| `hardware/schematic/` | Whole KiCad project: `TokenKey-RT.kicad_pro`, `.kicad_sch` (plus sub-sheets), 4-layer `.kicad_pcb` and `.kicad_dru` |
 | `hardware/libraries/` | Project symbols, footprints and 3D models |
 | `firmware/` | i.MX RT1062 firmware and USB protocol |
 | `software/` | Laptop companion application |
