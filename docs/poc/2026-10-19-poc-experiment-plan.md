@@ -1,7 +1,7 @@
 # TokenKey RT: Software-only PoC Experiment Plan (draft)
 
 - **Date:** 2026-10-19
-- **Status:** Draft for review. Not committed. Companion to `2026-10-19-value-assessment.md`.
+- **Status:** Draft for review. Committed in PR #12 (docs/poc/)
 - **Budget assumption:** about 2-4 engineer-weeks plus API spend capped by the experimenter (e.g. a fixed $ budget set by Anand). No hardware purchases.
 
 ## Summary
