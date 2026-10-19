@@ -1,0 +1,31 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "fw-base",
+      "hidden": true,
+      "generator": "Unix Makefiles",
+      "toolchainFile": "${sourceDir}/arm-none-eabi.cmake"
+    },
+    { "name": "dvl6b", "inherits": "fw-base", "binaryDir": "${sourceDir}/build-dvl6b",
+      "cacheVariables": { "TK_PART": "DVL6B" } },
+    { "name": "cvl5b", "inherits": "fw-base", "binaryDir": "${sourceDir}/build-cvl5b",
+      "cacheVariables": { "TK_PART": "CVL5B" } },
+    { "name": "recovery-1pad", "inherits": "fw-base", "binaryDir": "${sourceDir}/build-recovery",
+      "cacheVariables": { "TK_PART": "CVL5B", "TK_FCB_SINGLE_PAD": "ON" } },
+    { "name": "host", "generator": "Unix Makefiles", "binaryDir": "${sourceDir}/build-host" },
+    { "name": "dvl6b-ninja", "inherits": "dvl6b", "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-dvl6b-ninja" }
+  ],
+  "buildPresets": [
+    { "name": "dvl6b", "configurePreset": "dvl6b" },
+    { "name": "cvl5b", "configurePreset": "cvl5b" },
+    { "name": "recovery-1pad", "configurePreset": "recovery-1pad" },
+    { "name": "host", "configurePreset": "host" },
+    { "name": "dvl6b-ninja", "configurePreset": "dvl6b-ninja" }
+  ],
+  "testPresets": [
+    { "name": "host", "configurePreset": "host", "output": { "outputOnFailure": true } }
+  ]
+}

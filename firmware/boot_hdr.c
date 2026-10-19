@@ -10,7 +10,11 @@
  * which limits the serial clock; we run SDR quad I/O at 50 MHz (W25Q64JV: 133 MHz max).
  *
  * Requirement: the flash QE bit (SR2[1]) must be 1. W25Q64JV-IQ ships with QE=1; a part
- * with QE=0 will not boot in 1-4-4 mode (see README "Flash notes").
+ * with QE=0 will not boot in 1-4-4 mode (see docs/bringup_checklist.md).
+ *
+ * TK_FCB_SINGLE_PAD=1 (CMake -DTK_FCB_SINGLE_PAD=ON, preset "recovery-1pad") builds a
+ * recovery image whose FCB reads with Fast Read 0x0B (1-1-1, 8 dummy clocks), which works
+ * regardless of QE. Erase/program sequences are single-pad in both variants.
  */
 #include <stdint.h>
 
@@ -103,6 +107,10 @@ _Static_assert(__builtin_offsetof(flexspi_mem_config_t, lookupTable) == 0x80, "F
 
 #define TK_FLASH_SIZE   (8u * 1024u * 1024u)
 
+#ifndef TK_FCB_SINGLE_PAD
+#define TK_FCB_SINGLE_PAD 0
+#endif
+
 __attribute__((used, section(".boot_hdr.conf")))
 const flexspi_nor_config_t g_flexspi_nor_config = {
     .memConfig = {
@@ -112,13 +120,23 @@ const flexspi_nor_config_t g_flexspi_nor_config = {
         .csHoldTime = 3u,
         .csSetupTime = 3u,
         .deviceType = 1u,           /* serial NOR */
+#if TK_FCB_SINGLE_PAD
+        .sflashPadType = 1u,        /* single */
+#else
         .sflashPadType = 4u,        /* quad */
+#endif
         .serialClkFreq = 2u,        /* 50 MHz (conservative; internal loopback) */
         .sflashA1Size = TK_FLASH_SIZE,
         .lookupTable = {
+#if TK_FCB_SINGLE_PAD
+            /* Fast Read 0x0B: 1-1-1, 24-bit addr, 8 dummy clocks (QE not required) */
+            [4 * SEQ_READ + 0] = LUT_SEQ(LUT_CMD_SDR, PAD1, 0x0B, LUT_RADDR_SDR, PAD1, 24),
+            [4 * SEQ_READ + 1] = LUT_SEQ(LUT_DUMMY_SDR, PAD1, 8, LUT_READ_SDR, PAD1, 4),
+#else
             /* Fast Read Quad I/O 0xEB: 1-4-4, 24-bit addr, M7-0 + 4 dummy = 6 cycles @ 4 pads */
             [4 * SEQ_READ + 0] = LUT_SEQ(LUT_CMD_SDR, PAD1, 0xEB, LUT_RADDR_SDR, PAD4, 24),
             [4 * SEQ_READ + 1] = LUT_SEQ(LUT_DUMMY_SDR, PAD4, 6, LUT_READ_SDR, PAD4, 4),
+#endif
             /* Read Status Register-1 0x05 */
             [4 * SEQ_READSTATUS] = LUT_SEQ(LUT_CMD_SDR, PAD1, 0x05, LUT_READ_SDR, PAD1, 4),
             /* Write Enable 0x06 */

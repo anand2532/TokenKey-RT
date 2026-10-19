@@ -100,8 +100,13 @@ static const uint8_t k_init[] = {
     0x40,       /* start line 0 */
     0x8D, 0x14, /* charge pump ON (7.5 V) - required, the module has no external VCC */
     0x20, 0x00, /* horizontal addressing */
-    0xA1,       /* segment remap: column 127 -> SEG0 */
-    0xC8,       /* COM scan remapped (flip vertically); with A1 = 180 deg vs. reset */
+#if OLED_ROTATE_180
+    0xA0,       /* segment remap: column 0 -> SEG0 } module-normal rotated 180 deg */
+    0xC0,       /* COM scan COM0 -> COM63         } (enclosure default, see oled.h) */
+#else
+    0xA1,       /* segment remap: column 127 -> SEG0 } module-normal orientation */
+    0xC8,       /* COM scan COM63 -> COM0           } (Adafruit/u8g2/HS96L03W2C03 default) */
+#endif
     0xDA, 0x12, /* COM pins: alternative, no left/right remap (128x64 panels) */
     0x81, 0xCF, /* contrast */
     0xD9, 0xF1, /* pre-charge (charge-pump setting) */
