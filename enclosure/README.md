@@ -13,13 +13,13 @@ Enclosure and industrial design for TokenKey RT. Everything enclosure-related (r
 
 ## Board reference used
 - **Current:** Layout's #31 commit **`eb4495a`** (branch `issue-31-pcb-l2`), re-extracted 2026-10-19 into `cad/board_ref.json`. Changes from main `6fb72fa`:
-  - J2 at **y 5.0** (module 1.24 mm clear of the USB-C body);
+  - J2 at **y 5.0** in the board ref. **The CAD overrides it to y 4.4** (`J2_Y`), pending PR #49. #49 (head `b873acc`) still has 5.0 and isn't merged. Once it merges, regenerate `board_ref.json` from main and drop the override;
   - L2 is now **TDK VLS3015CX (1.5 mm)** on the board (verified);
   - OLED drawings redrawn, including the back-side block band.
-- **`eb4495a` is not on `main` yet.** Main is `995be50`, and its last board change is `6fb72fa` with J2 at y 5.5. The CAD is designed to `eb4495a`.
+- Main is `b23a696` (enclosure v0.1, PR #51). The CAD is designed to `eb4495a` plus the J2 override.
 - **Earlier references:** `cfc9bc3` (PR #23 head, J2 at y 6.3) and `6fb72fa` (main: PR #23 merged at `8143f18`, PR #25 at `2e09fee`).
 - **OLED stack (PM final):** the module is soldered directly onto a 3.0 mm plastic-body header, with no socket or shim. The **OLED top is 5.65 mm** above the PCB top (3.0 + 2.65). Both values are parameters.
-- **Encoder:** EC11E18244A5, 20 mm shaft, 36 detents. The PM kept it; the 15 mm swap is dropped.
+- **Encoder:** EC11E18244A5, 20 mm shaft from the body top, 36 detents. Body 4.5 mm, no bushing; the shaft tip is 24.5 mm above the PCB (#54).
 - **When to re-run:** after any layout change that moves J1, J2, SW1–SW4, J3, D1 or H1–H4:
   1. `tools/board_extract.py`
   2. `cad/make_board_ref.py`
@@ -28,4 +28,4 @@ Enclosure and industrial design for TokenKey RT. Everything enclosure-related (r
   Then update research.md.
 
 ## Status
-Research done; Direction A approved; prototype CAD in `cad/` (issue #42). No printing or purchases until the PoC spend gate (G1–G5 in `docs/decisions.md`) is passed.
+Research done; Direction A approved; prototype CAD in `cad/` (issue #42; #52 FPC and #54 EC11 follow-ups). No printing or purchases until the PoC spend gate (G1–G5 in `docs/decisions.md`) is passed.

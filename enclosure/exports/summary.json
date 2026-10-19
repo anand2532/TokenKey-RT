@@ -13,19 +13,35 @@
   "oled_top": 5.65,
   "lid_under": 6.0,
   "lid_top": 7.5,
-  "collar_top": 11.0,
+  "collar_top": 12.5,
   "knob_bottom": 9.5,
-  "knob_top": 23.5,
-  "shaft_top": 20.0
+  "knob_top": 26.0,
+  "shaft_top": 24.5
+ },
+ "j2_y": 4.4,
+ "j2_board_ref_y": 5.0,
+ "encoder": {
+  "body_h": 4.5,
+  "shaft_tip": 24.5,
+  "shaft_tip_pressed": 23.0,
+  "flat_start": 14.5,
+  "trim": 0.0,
+  "body_to_lid_underside": 1.5
  },
  "knob": {
-  "shaft": 20.0,
-  "height": 14.0,
+  "shaft_tip": 24.5,
+  "height": 16.5,
+  "height_min": 16.5,
   "dia": 17.0,
   "insert": "sleeve",
-  "engagement": 7.0,
-  "top_above_desk": 29.2,
-  "top_above_desk_with_grip_cord": 29.9
+  "dkey_start": 15.5,
+  "collar_top": 12.5,
+  "collar_overlap_rest": 3.0,
+  "full_push_skirt_to_lid": 0.5,
+  "full_push_pocket_to_collar": 1.5,
+  "engagement": 9.0,
+  "top_above_desk": 31.7,
+  "top_above_desk_with_grip_cord": 32.4
  },
  "stems": {
   "button_cap_len": 6.4,
@@ -34,10 +50,10 @@
  },
  "usb_overmold_to_receptacle_face": 1.1,
  "mass_g": {
-  "top_shell": 6.0,
+  "top_shell": 6.3,
   "bottom_tray": 4.5,
   "hatch_cover": 0.4,
-  "knob": 2.8,
+  "knob": 3.1,
   "button_cap_btn1": 0.1,
   "button_cap_btn2": 0.1,
   "light_pipe": 0.0,
@@ -46,10 +62,10 @@
   "PCBA (estimate)": 9.0,
   "4x M2x8 screws + inserts": 2.4
  },
- "mass_total_g": 29.9,
+ "mass_total_g": 30.4,
  "mass_target_g": 120.0,
  "checks_bad": 0,
- "fpc_plan_clearance": -0.26,
- "module_plan_clearance": 1.24,
+ "fpc_plan_clearance": 2.04,
+ "module_plan_clearance": 1.84,
  "board_unknown_heights": []
 }

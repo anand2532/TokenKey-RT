@@ -158,8 +158,8 @@ def hatch_cover():
     return c
 
 
-def knob(shaft_l=None, knob_h=None, insert=None):
-    shaft_top = P.SHAFT_TOP if shaft_l is None else shaft_l
+def knob(shaft_top=None, knob_h=None, insert=None):
+    shaft_top = P.SHAFT_TOP if shaft_top is None else shaft_top
     kh = P.KNOB_H if knob_h is None else knob_h
     insert = P.KNOB_INSERT if insert is None else insert
     ax, ay = enc_xy()
@@ -173,6 +173,8 @@ def knob(shaft_l=None, knob_h=None, insert=None):
     # radial bearing pocket over the lid collar
     k = k.cut(cyl(ax, ay, z0 - 1, P.KNOB_POCKET_TOP, P.COLLAR_OD + 2 * P.KNOB_BEARING_CLR))
     bore_top = shaft_top + P.KNOB_TOP_CLR
+    if bore_top + P.KNOB_TOP_SKIN > z1 + 1e-6:
+        raise ValueError(f"knob H {kh} too short: needs >= {bore_top + P.KNOB_TOP_SKIN - z0:.2f}")
     if insert == "sleeve":
         k = k.cut(cyl(ax, ay, P.KNOB_POCKET_TOP - EPS, bore_top, P.SLEEVE_OD))
     else:
@@ -183,14 +185,12 @@ def knob(shaft_l=None, knob_h=None, insert=None):
             zm = (P.KNOB_POCKET_TOP + shaft_top) / 2
             k = k.cut(cq.Workplane("YZ").circle(P.SETSCREW_INSERT_D / 2).extrude(P.KNOB_D)
                       .translate((ax, ay, zm)))
-    if bore_top > z1 - 1.0:
-        raise ValueError("knob too short for the shaft")
     return k
 
 
-def knob_sleeve(shaft_l=None):
+def knob_sleeve(shaft_top=None):
     ax, ay = enc_xy()
-    top = (P.SHAFT_TOP if shaft_l is None else shaft_l) + P.KNOB_TOP_CLR
+    top = (P.SHAFT_TOP if shaft_top is None else shaft_top) + P.KNOB_TOP_CLR
     s = cyl(ax, ay, P.KNOB_POCKET_TOP, min(P.KNOB_POCKET_TOP + P.SLEEVE_L, top), P.SLEEVE_OD - 0.02)
     d = cyl(ax, ay, P.KNOB_POCKET_TOP - 1, top + 1, P.ENC_SHAFT_D + 0.05)
     flat = box(ax - 5, ay + P.ENC_FLAT / 2 + 0.03, P.KNOB_POCKET_TOP - 2, ax + 5, ay + 5, top + 2)
