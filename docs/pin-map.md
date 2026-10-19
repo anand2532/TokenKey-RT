@@ -70,7 +70,7 @@ BOOT_MODE is latched on the POR_B rising edge: hold SW1 (bottom side) and pulse 
 | DCDC_GND | N1, N2 | GND |  |
 | DCDC_IN | L1, L2 | 3V3 | 3x220nF + 4.7uF + 22uF |
 | DCDC_IN_Q | K4 | 3V3 | (shares DCDC_IN caps) |
-| DCDC_LP | M1, M2 | DCDC_LP | L2 SWPA4020S4R7MT 4.7uH to VDD_SOC |
+| DCDC_LP | M1, M2 | DCDC_LP | L2 VLS3015CX-4R7M-1 4.7uH to VDD_SOC |
 | DCDC_PSWITCH | K3 | DCDC_PSWITCH | R3 100k from 3V3 + C5 100nF (~10 ms) |
 | DCDC_SENSE | J5 | VDD_SOC | to VDD_SOC |
 | GPANAIO | N10 | NC | NC (NXP use only) |

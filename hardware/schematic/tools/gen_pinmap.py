@@ -57,7 +57,7 @@ L += ['', 'All other GPIO balls (GPIO_EMC_*, GPIO_B0/B1_* incl. BT_CFG[11:0] on 
 DEC = {'VDD_SOC_IN': '5x220nF + 2x4.7uF + 22uF (~33uF total with DCDC note)', 'DCDC_IN': '3x220nF + 4.7uF + 22uF', 'DCDC_IN_Q': '(shares DCDC_IN caps)',
        'VDD_HIGH_IN': '220nF + 4.7uF', 'VDD_HIGH_CAP': '220nF + 4.7uF (EVK C21/C22)', 'VDD_SNVS_IN': '220nF (tied to 3V3)', 'VDD_SNVS_CAP': '220nF + 4.7uF (EVK C25/C52)',
        'VDDA_ADC_3P3': '220nF + 1uF', 'NVCC_SD0': '100nF + 4.7uF', 'NVCC_SD1': '100nF + 4.7uF', 'NVCC_EMC': '2x100nF + 4.7uF', 'NVCC_GPIO': '3x100nF + 4.7uF',
-       'VDD_USB_CAP': '10uF + 100nF (EVK C82/C83)', 'NVCC_PLL': '4.7uF + 220nF (EVK C26/C24)', 'DCDC_LP': 'L2 SWPA4020S4R7MT 4.7uH to VDD_SOC',
+       'VDD_USB_CAP': '10uF + 100nF (EVK C82/C83)', 'NVCC_PLL': '4.7uF + 220nF (EVK C26/C24)', 'DCDC_LP': 'L2 VLS3015CX-4R7M-1 4.7uH to VDD_SOC',
        'DCDC_PSWITCH': 'R3 100k from 3V3 + C5 100nF (~10 ms)', 'DCDC_SENSE': 'to VDD_SOC', 'GPANAIO': 'NC (NXP use only)'}
 for name, balls in sorted(B['sup'].items()):
     net = mcu['nets'][balls[0]]
