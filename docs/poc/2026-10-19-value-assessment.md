@@ -1,7 +1,7 @@
 # TokenKey RT: Value Assessment (draft)
 
 - **Date:** 2026-10-19
-- **Status:** Draft for review. Not committed to the repo; intended for `docs/poc/` once the owner has set up `docs/poc/README.md`.
+- **Status:** Draft for review. Committed in PR #12 (docs/poc/)
 - **Inputs read:** `docs/baseline-specs.md` (sections 1, 5, 7, 8 in particular), `docs/decisions.md`, `firmware/docs/firmware_architecture.md`, `firmware/docs/usb_protocol.md`.
 
 ## Summary
