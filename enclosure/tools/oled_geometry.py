@@ -7,13 +7,14 @@ J2 is placed at rotation 90 with its pins along +x, and the module extends south
 so module +x/+y map directly onto board +x/+y with no mirroring.
 
 Usage: python3 oled_geometry.py [--header H] [J2_y ...]
-  defaults: header 3.0 mm (PM, 2026-10-19), J2 y 5.5 (main 6fb72fa) and 5.0 (Layout ask)
-Heights: design top = header + MODULE_ALLOW (3.6 mm envelope); nominal top = header + 2.65;
-lowest module point if the 1.0 mm back-side feature hangs below = header - 1.0.
+  defaults: header 3.0 mm (PM, 2026-10-19), J2 y 5.0 (Layout eb4495a) and 5.5 (main 6fb72fa)
+Heights (PM final stack): module soldered onto a 3.0 mm plastic-body header; OLED top = header +
+MODULE_T (2.65) = 5.65 mm design value; lowest module point (1.0 mm back-side block) = header - 1.0.
+The CAD (../cad/params.py) uses the same numbers.
 """
 import sys
 
-PIN1_X = 16.34                      # J2 pin 1 x on the board (PR #23)
+PIN1_X = 16.34                      # J2 pin 1 x on the board (eb4495a)
 MOD = dict(w=27.30, h=27.80, pin1_from_left=9.84, pin1_from_header_edge=1.44)
 GLASS = dict(x=(-8.60, 16.14), y=(3.43, 3.43 + 16.90))
 AA = dict(x=(-7.06, 14.68), y=(4.93, 15.79))    # AA x position assumed centred (not dimensioned)
@@ -45,23 +46,22 @@ def run(j2y):
     print("FPC bend x-span", f(fpc), " overlaps J1 x-span" if fpc[0] < J1_X[1] and fpc[1] > J1_X[0] else "")
     print(f"far edge y {pcb[3]:.2f}: gap to J1 body {J1_BODY_Y0 - pcb[3]:+.2f} mm, to J1 courtyard {J1_CRTYD_Y0 - pcb[3]:+.2f} mm")
 
-MODULE_NOM, MODULE_ALLOW, BACK_FEATURE = 2.65, 3.6, 1.0
-LID_GAP, LID_T = 0.4, 1.5                 # lid underside above design top; lid plate thickness
-KEEP_UNDER = {"U6 SOT-23-6": 1.45, "U1 BGA": 1.4, "L2 SWPA4020 (board, until sync)": 2.0,
-              "L2 VLS3015CX (schematic)": 1.5}
+MODULE_T, BACK_FEATURE = 2.65, 1.0
+LID_GAP, LID_T = 0.35, 1.5                # lid underside above the OLED top; lid plate thickness
+KEEP_UNDER = {"U6 SOT-23-6": 1.45, "U1 BGA": 1.4, "L2 VLS3015CX (board, eb4495a)": 1.5}
 
 args = sys.argv[1:]
 header = 3.0
 if "--header" in args:
     i = args.index("--header"); header = float(args[i + 1]); del args[i:i + 2]
-for y in (map(float, args) if args else (5.5, 5.0)):
+for y in (map(float, args) if args else (5.0, 5.5)):
     run(y)
 
-top_design, top_nom = header + MODULE_ALLOW, header + MODULE_NOM
-lid_under = top_design + LID_GAP
+top = header + MODULE_T
+lid_under = top + LID_GAP
 print(f"--- heights above main-PCB top, header (module-PCB underside) = {header:.2f} mm ---")
-print(f"OLED top: design {top_design:.2f} (header + {MODULE_ALLOW}), nominal {top_nom:.2f} (header + {MODULE_NOM})")
-print(f"lid underside {lid_under:.2f}, lid top {lid_under + LID_T:.2f}; nominal glass-to-lid gap {lid_under - top_nom:.2f}")
+print(f"OLED top (design): {top:.2f} (header + {MODULE_T})")
+print(f"lid underside {lid_under:.2f}, lid top {lid_under + LID_T:.2f}; glass-to-lid gap {LID_GAP:.2f}")
 low = header - BACK_FEATURE
 print(f"lowest module point if the {BACK_FEATURE} mm back feature hangs below: {low:.2f}")
 for k, v in KEEP_UNDER.items():
