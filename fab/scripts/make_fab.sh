@@ -24,8 +24,21 @@ step bom_raw kicad-cli sch export bom "$SCH" -o "$R/bom-raw.csv" --exclude-dnp \
 step ipcd356 kicad-cli pcb export ipcd356 "$PCB" -o "$OUT/TokenKey-RT.ipc356"
 step assy_top kicad-cli pcb export pdf "$PCB" -o "$D/assembly-top.pdf" --mode-single --layers F.Fab,Edge.Cuts --ibt --sp --cdnp
 step assy_bottom kicad-cli pcb export pdf "$PCB" -o "$D/assembly-bottom.pdf" --mode-single --mirror --layers B.Fab,Edge.Cuts --ibt --sp --cdnp
+step hand_bom python3 "$ROOT/fab/scripts/hand_assembly.py" "$ROOT" "$OUT/hand_assembly_bom.csv"
 step jlc_convert python3 "$ROOT/fab/scripts/jlc_convert.py" "$R" "$P"
 cp "$ROOT/fab/README.md" "$ROOT/fab/stackup.md" "$OUT/" 2>/dev/null
+
+# Panel (KiKit, pinned in fab/Makefile). 2x2 grid, mouse bites (R1 corners), top/bottom rails, 3 fiducials, 4 tooling holes.
+KIKIT="${KIKIT:-kikit}"; PN="$OUT/panel"; mkdir -p "$PN"
+if [ "${SKIP_PANEL:-0}" != 1 ]; then
+step panel "$KIKIT" panelize --layout 'grid; rows: 2; cols: 2; space: 2mm' --tabs 'fixed; width: 3mm; vcount: 2; hcount: 2' \
+  --cuts 'mousebites; drill: 0.5mm; spacing: 0.8mm; offset: 0.2mm; prolong: 0.5mm' --framing 'railstb; width: 5mm; space: 2mm' \
+  --tooling '3hole; hoffset: 2.5mm; voffset: 2.5mm; size: 1.5mm' --fiducials '3fid; hoffset: 5mm; voffset: 2.5mm; coppersize: 1mm; opening: 2mm' \
+  --post 'millradius: 1mm' "$PCB" "$PN/TokenKey-RT-panel.kicad_pcb"
+step panel_fab "$KIKIT" fab jlcpcb --assembly --schematic "$SCH" --field LCSC --no-drc --missingWarn "$PN/TokenKey-RT-panel.kicad_pcb" "$PN/jlc"
+[ -f "$PN/jlc/gerbers.zip" ] && mv "$PN/jlc/gerbers.zip" "$OUT/TokenKey-RT_panel_gerbers_drill_$SHA.zip"
+python3 -c "import pcbnew,sys;b=pcbnew.LoadBoard(sys.argv[1]);r=b.GetBoardEdgesBoundingBox();print(f'- panel size {r.GetWidth()/1e6:.1f} x {r.GetHeight()/1e6:.1f} mm, {len(b.GetFootprints())} footprints')" "$PN/TokenKey-RT-panel.kicad_pcb" >>"$SUMMARY" 2>/dev/null
+fi
 
 # Gates (always reported; only --strict makes them fatal)
 kicad-cli sch erc "$SCH" -o "$R/erc.json" --format json --severity-all >"$R/erc.log" 2>&1
