@@ -7,7 +7,7 @@ import params as P
 # as long as they do not intersect).
 FITS = [
     ("top_shell", "pcb"), ("bottom_tray", "pcb"), ("top_shell", "bottom_tray"),
-    ("hatch_cover", "bottom_tray"), ("ballast", "bottom_tray"), ("knob_sleeve", "knob"),
+    ("hatch_cover", "bottom_tray"), ("ballast", "bottom_tray"), ("feet", "bottom_tray"), ("feet", "hatch_cover"), ("knob_sleeve", "knob"),
     ("knob_sleeve", "SW2"), ("knob", "SW2"), ("knob", "top_shell"),
     ("button_cap", "top_shell"), ("light_pipe", "top_shell"), ("top_shell", "OLED module PCB"),
     ("button_cap_btn1", "SW3"), ("button_cap_btn2", "SW4"), ("light_pipe", "D1"),

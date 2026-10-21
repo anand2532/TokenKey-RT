@@ -2,8 +2,8 @@
 
 - **Date:** 2026-10-19
 - **Owner:** TokenKey Enclosure / ID. Reviewers: TokenKey PM, Anand.
-- **Status:** Research; Direction A approved. Parametric CAD is in [`cad/`](cad/README.md) (issue #42). No printing or purchases yet. Per [decisions](../docs/decisions.md), there is no enclosure spend until PoC gates G1–G5 pass.
-- **Issues:** #29 (research), #42 (CAD), #52 (FPC bend vs USB-C), #54 (EC11E heights).
+- **Status:** Research; Direction A approved. Parametric CAD is in [`cad/`](cad/README.md) (issue #42; authoritative), with a validated FreeCAD port in [`freecad/`](freecad/README.md) (#63). No printing or purchases yet. Per [decisions](../docs/decisions.md), there is no enclosure spend until PoC gates G1–G5 pass.
+- **Issues:** #29 (research), #42 (CAD), #52 (FPC bend vs USB-C), #54 (EC11E heights), #53 (weight → feet + steel plate), #63 (FreeCAD port).
 - **Board data:** **main `e2e5ff9`** (PR #49 merged). J2, L2 and the OLED outline are identical to Layout's #31 commit `eb4495a`, which the numbers below were first taken from.
   - Board file: `hardware/schematic/TokenKey-RT.kicad_pcb`.
   - Docs: [layout-notes](../docs/layout-notes.md) §10–§11 and §13, and [decisions](../docs/decisions.md), rows "Board", "OLED HS96L03W2C03 mechanicals" and "OLED header height".
@@ -218,7 +218,7 @@ Common to all three directions:
     - `sleeve` (default): Ø8 bore for a press-fit brass D-sleeve, 7 mm long;
     - `setscrew`: D-bore plus a radial M3 heat-set insert for a set screw;
     - `none`: plain printed D-bore.
-  - Knob top **26.0 mm** above the PCB, **31.7 mm above the desk**; +0.7 mm with the grip cord fitted.
+  - Knob top **26.0 mm** above the PCB, **31.7 mm above the tray underside** (32.9 mm above the desk on the 1.2 mm-proud feet).
   - At Ø18 it stays clear of the OLED window (right edge x 31.52) and D1 (11.3 mm from the axis).
   - It also stays ~3 mm clear in plan of the button caps (12.5 mm south of the axis).
 - **Buttons (B3U kept, PM):** printed plunger caps with a **defined travel**.
@@ -231,8 +231,10 @@ Common to all three directions:
 - **OLED:** window 22.74 × 11.86 mm at J2 pin 1 + (3.81, 10.36), chamfered through the lid to ~25.7 × 14.9 mm at the outer face. Lid datum posts at the four module holes, for location only. Header h = 3.0. Lid underside at **6.0 mm above the PCB** (OLED top 5.65 + 0.35), lid top at 7.5 mm (see §1.1).
 - **Encoder:** the EC11E body is 4.5 mm tall, 1.5 mm below the 6.0 mm lid underside, so **no lid relief** is needed. The full 1.5 mm lid is used, plus the bearing boss on top.
 - **Bottom clearance:** 2.5 mm (DNP L1 2.0 mm + 0.5 mm). THT tails are trimmed to ≤ 1.5 mm (PM).
-- **Mass and grip (design parameters, no purchases):** steel or brass ballast plus a silicone grip ring or 4 × Ø8 mm feet.
-  - Rough estimate: resisting a 17 mN·m detent torque with friction alone (μ ≈ 0.8, r ≈ 18 mm) needs **~120 g**. This is an assumption; the user's finger pressure helps.
+- **Mass and grip (#53, PM decision): keep the slim 13.2 mm puck; the 120 g target is dropped.**
+  - **Grip:** five adhesive silicone feet, Ø7.9 × 2.2 mm (3M Bumpon SJ5302-class), in 1.0 mm pockets. One foot sits in the hatch cover, because the hatch and BOOT/H2 block the east corners. The grip-cord groove is removed (see `cad/README.md`).
+  - **Ballast:** the largest laser-cut 1.2 mm steel plate that fits under the board, 1247 mm², **11.7 g**. **Total ≈ 39.5 g.**
+  - **Slip:** friction (μ ≈ 0.8) then resists about 7 mN·m about the knob, against up to 17 mN·m of detent torque. The puck holds once the user rests about 1 N on it, which is the normal hand position, but it can rotate if the knob is flicked with no hand on the body.
 
 ### Direction A: flat "Puck" clamshell *(recommended; approved by PM)*
 - **Envelope:** **55 × 45 mm**, 3.5 mm outer corner radius. Body height **13.2 mm**: floor 1.6 + clearance 2.5 + PCB 1.6 + 6.0 (OLED top 5.65 + 0.35) + top 1.5.
@@ -242,8 +244,7 @@ Common to all three directions:
 - **Walls:** 2.0 mm on FDM, 1.6 mm on SLA. 0.5 mm PCB-to-wall gap, located by the bosses.
 - **Assembly:** 4 × M2 × 8 mm (DIN 912) from below, through bottom-tray bosses, the PCB holes and into heat-set inserts in top-shell bosses. Lap joint at the parting line. No snaps, so it can be reopened many times.
 - **Window:** 22.74 × 11.86 mm opening (§1.1) with a 45° outer chamfer. Optionally a 1 mm smoked PMMA insert, flush in a 24.8 × 13.9 mm pocket.
-- **Ballast:** the 2.5 mm under-board gap only fits a **1.2 mm plate** under the BGA area: 18 × 18 mm, ~3 g in steel, ~7 g in tungsten. The CAD estimate is **~30 g total**, far **below the 120 g target**.
-  - Reaching it needs ~90 g more, e.g. a 45 × 35 × 7 mm steel slab under a thicker floor, which adds ~7 mm height. Alternatively, accept that the user steadies the puck while turning.
+- **Ballast (#53):** the 2.5 mm under-board gap fits a **1.2 mm steel plate**. It is maximised round the bottom-side parts, lead tails, bosses, BOOT and the hatch: 49.8 × 39.8 mm envelope, 1247 mm², **11.7 g**. **Total ≈ 39.5 g.** The PM chose this over a taller, heavier puck.
 - **Pros:** smallest; fastest to print; uses the existing PCB holes; all service needs met.
 - **Cons:** light; flat view of the OLED; little room for ballast.
 
@@ -280,7 +281,7 @@ Direction A (the puck) is **approved**. The PM answered the open decisions as fo
 | 5 | User buttons | **Keep B3U**, with printed plunger caps giving a defined travel; revisit after a print fit check | Caps as specified above |
 | 6 | M2 holes | Stay **NPTH** (no chassis-GND contact) | Plain screw bosses; no contact spring |
 | 7 | Under the OLED / stack | Max **2.0 mm** under the OLED. **Final stack:** module soldered directly onto a 3.0 mm plastic-body header, no socket or shim; OLED top ≈ 5.65 mm | Lid underside 6.0, lid top 7.5, body 13.2 mm. U6 clearance resolved |
-| — | Weight and grip | The ~120 g target and the grip ring stay **design parameters**; no purchases | Keep the ballast pocket and the grip-ring groove in CAD |
+| — | Weight and grip | **Updated (#53):** keep the slim 13.2 mm puck and drop the 120 g target. Grippy silicone feet plus the largest steel plate that fits; no purchases | 5 foot pockets (Ø7.9 × 2.2 stock feet), maximised 1.2 mm steel plate (11.7 g), grip-cord groove removed. ≈ 39.5 g |
 
 **Still open or new:**
 1. **Board reference:** main `e2e5ff9` (PR #49 merged). J2 stays at y 5.0 (PM).
@@ -288,12 +289,13 @@ Direction A (the puck) is **approved**. The PM answered the open decisions as fo
 3. **EC11 heights:** now from Alps drawing No.3 (body 4.5, no bushing, tip 24.5). Confirm on one part.
 4. **Measure a sample module:** the FPC bend inset, the back-block x position, and the AA x position.
 5. **OLED retention:** lid datum posts locate the module for the prototype; a screwed module plus connector is deferred to production.
-6. **Mass:** ~30 g estimated vs. the 120 g parameter (see Direction A).
+6. **Grip:** ≈ 39.5 g on silicone feet. Check slip and tipping on the first print (#53 fit check).
 7. Resolved since the first review:
    - the 15 mm shaft swap is dropped, so there is no EC11 BOM change;
    - L2 is now VLS3015CX on the `eb4495a` board;
    - **#52** FPC bend vs USB-C: resolved (far-edge bend inside the outline, +1.44 mm at J2 y 5.0);
-   - **#54** EC11E heights: real part data, bushing-free collar, knob recomputed.
+   - **#54** EC11E heights: real part data, bushing-free collar, knob recomputed;
+   - **#53** weight: target dropped; feet + maximised steel plate.
 
 ## Sources
 - [S1] Core77, "Extra UI for Your Computer: The Creator Micro": https://www.core77.com/posts/133626/Extra-UI-for-Your-Computer-The-Creator-Micro

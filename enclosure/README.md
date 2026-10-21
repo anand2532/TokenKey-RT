@@ -6,10 +6,14 @@ Enclosure and industrial design for TokenKey RT. Everything enclosure-related (r
 |---|---|
 | [research.md](research.md) | User research with cited sources, the board facts that drive the enclosure, the OLED window, standoff and USB-C analysis, three design directions, PM decisions and open items |
 | [cad/](cad/README.md) | **Direction A puck**, parametric CadQuery model:<br>• `params.py` holds every dimension<br>• `build.py` / `Makefile` regenerate everything<br>• board keep-out model and interference checks |
+| [freecad/](freecad/README.md) | **FreeCAD 1.0 port** (#63): `puck.FCStd` (Params/Points/Plate spreadsheets + one Part per part), `assembly.FCStd` with the board keep-out, STEP/STL in `freecad/exports/`, and `VALIDATION.md` against the CadQuery reference |
 | `exports/` | Generated outputs:<br>• STEP per part, `assembly.step` and `board_keepout.step`<br>• STL per part<br>• `interference_report.md` and `summary.json` |
 | `renders/` | Generated PNGs: isometric, exploded, OLED/USB-C section, bottom and rear |
 | `tools/board_extract.py` | Dumps outline, holes and footprints (position, courtyard, pads, 3D model refs) from the `.kicad_pcb` with the KiCad 9 pcbnew Python API |
 | `tools/oled_geometry.py` | Maps the HS96L03W2C03 datasheet offsets (origin at J2 pin 1) onto board coordinates for a given J2 y, and gives window, hole, USB-C clearance and height tables |
+
+## Source of truth
+**The CadQuery model in `cad/` is authoritative.** The FreeCAD documents are generated from `cad/params.py` and checked against the CadQuery exports. Volume, bounding box and symmetric-difference volume agree to < 0.001 %; see `freecad/VALIDATION.md`. Edit `params.py`, rebuild CadQuery, then regenerate FreeCAD. Only switch the authority to FreeCAD once the PM signs that off.
 
 ## Board reference used
 - **Current:** **main `e2e5ff9`** (PR #49 merged), re-extracted 2026-10-19 into `cad/board_ref.json`. J2, L2 and the OLED outline are identical to Layout's `eb4495a`. Relative to the older main `6fb72fa`:

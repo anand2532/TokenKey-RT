@@ -40,7 +40,7 @@
   "full_push_pocket_to_collar": 1.5,
   "engagement": 9.0,
   "top_above_desk": 31.7,
-  "top_above_desk_with_grip_cord": 32.4
+  "top_above_desk_on_feet": 32.9
  },
  "stems": {
   "button_cap_len": 6.4,
@@ -51,18 +51,86 @@
  "mass_g": {
   "top_shell": 6.3,
   "bottom_tray": 4.5,
-  "hatch_cover": 0.4,
+  "hatch_cover": 0.3,
   "knob": 3.1,
   "button_cap_btn1": 0.1,
   "button_cap_btn2": 0.1,
   "light_pipe": 0.0,
-  "ballast": 3.1,
+  "ballast": 11.7,
+  "feet": 0.6,
   "knob_sleeve": 1.4,
   "PCBA (estimate)": 9.0,
   "4x M2x8 screws + inserts": 2.4
  },
- "mass_total_g": 30.4,
- "mass_target_g": 120.0,
+ "mass_total_g": 39.5,
+ "overall_on_feet_mm": 14.4,
+ "feet": {
+  "n": 5,
+  "d": 7.9,
+  "h": 2.2,
+  "pocket_depth": 1.0,
+  "proud": 1.2000000000000002,
+  "centres_cad": {
+   "SW": [
+    10.0,
+    4.0
+   ],
+   "NW": [
+    10.0,
+    36.0
+   ],
+   "SE": [
+    40.5,
+    6.0
+   ],
+   "E": [
+    47.3,
+    15.5
+   ],
+   "NE_cover": [
+    38.5,
+    33.5
+   ]
+  }
+ },
+ "plate": {
+  "t": 1.2,
+  "area_mm2": 1247.2,
+  "extent_kicad": [
+   0.11,
+   0.1,
+   49.9,
+   39.9
+  ],
+  "extent_mm": [
+   49.79,
+   39.8
+  ],
+  "cutouts": 3,
+  "mass_g": 11.7,
+  "top_to_pcb_bottom": 1.3
+ },
+ "foot_min_wall": {
+  "SW": 0.88,
+  "NW": 0.88,
+  "SE": 0.97,
+  "E": 0.81,
+  "NE_cover": 1.0
+ },
+ "support_margin": {
+  "knob axis": 1.78,
+  "SW3": 4.16,
+  "SW4": -0.52
+ },
+ "tip_press_N": {
+  "com_cad": [
+   25.9,
+   19.8
+  ],
+  "knob axis": "inside",
+  "SW3": "inside",
+  "SW4": 14.91
+ },
  "checks_bad": 0,
  "fpc_plan_clearance": 1.44,
  "module_plan_clearance": 1.24,

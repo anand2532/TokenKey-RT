@@ -121,18 +121,36 @@ HATCH_CENTRE_K = (34.65, 7.5)       # KiCad coords of the hatch centre (J3 at 39
 HATCH_RECESS = 0.5                  # cover flange per side
 HATCH_COVER_T = 0.8
 BOOT_HOLE_D, BOOT_TUBE_OD, BOOT_TUBE_GAP = 1.8, 3.6, 0.3
-BALLAST_K = (6.0, 10.0, 24.0, 28.0) # KiCad x0,y0,x1,y1 of the ballast plate (under the BGA area)
-BALLAST_T = 1.2
-BALLAST_RHO = 7.85                  # steel; tungsten 19.3
-BALLAST_WALL = 0.8
-GRIP_INSET, GRIP_W, GRIP_D = 1.2, 1.6, 0.8   # groove for a 1.5 mm silicone cord
-GRIP_CORD_PROUD = 0.7
+# Steel ballast plate (#53): laser-cut outline computed by plate.py (largest shape that fits).
+PLATE_T = 1.2                       # stock 1.2 mm cold-rolled steel (DC01); top at floor + 1.2 = PCB bottom - 1.3
+PLATE_Z_CLR = 0.3                   # min vertical gap plate top -> any bottom-side part (0603: 0.35, 0402: 0.75)
+PLATE_PART_GAP = 0.5                # plan gap to courtyards / lead tails / bosses that are too tall
+PLATE_EDGE_GAP = 0.6                # plan gap to the tray cavity wall
+PLATE_HATCH_RIM = 1.0               # floor rim kept around the hatch recess
+PLATE_MIN_FEATURE = 3.0             # no slivers / necks narrower than this (laser-cut, flat)
+PLATE_PIN_K = ((5.0, 12.0), (20.0, 30.0))    # KiCad xy of two printed locating pins (tray) / plate holes
+PLATE_PIN_D, PLATE_PIN_HOLE_D = 2.0, 2.4    # pins 1.0 mm tall; plate bonded with VHB tape (see BOM)
+PLATE_PIN_H = 1.0
+BALLAST_RHO = 7.85                  # g/cm3 steel (stainless 7.9)
+# Silicone feet (#53): stock adhesive bumpers in blind pockets in the tray underside.
+FOOT_D, FOOT_H = 7.9, 2.2           # 3M Bumpon SJ5302-class (env TK_FOOT=10x3 -> 10.0 x 3.0)
+if os.environ.get("TK_FOOT", "") == "10x3":
+    FOOT_D, FOOT_H = 10.0, 3.0
+FOOT_POCKET_CLR = 0.25              # radial
+FOOT_POCKET_DEPTH = 1.0             # floor left 0.6 mm; foot stands FOOT_H - depth proud
+# Foot centres, CAD XY (Y = 40 - KiCad y). Five, because the east side has no free corner: the hatch
+# fills the NE corner (that foot sits ON the hatch cover) and the BOOT hole + H2 boss fill the SE corner.
+# "E" keeps the knob axis and both buttons inside the support polygon (see README, tipping check).
+FEET = {"SW": (10.0, 4.0), "NW": (10.0, 36.0), "SE": (40.5, 6.0), "E": (47.3, 15.5), "NE_cover": (38.5, 33.5)}
+FOOT_RHO = 1.15                     # silicone
+FOOT_MIN_WALL = 0.8                 # build asserts this much material to every other floor opening
+# Grip-cord groove: REMOVED in v0.2 (feet replace it; see README).
 
 # --- mass -------------------------------------------------------------------------------------
 RHO = {"FDM": 1.27, "SLA": 1.18}    # PETG / standard resin
 FDM_FILL_FACTOR = 0.8               # walls ~solid at 2 mm; ~80 % of solid
 PCBA_MASS = 9.0                     # estimate: 50x40x1.6 FR4 ~6 g + parts
-MASS_TARGET = 120.0                 # design parameter only
+# MASS_TARGET dropped (PM #53): slim 13.2 mm puck, feet + steel plate instead of a 120 g target
 
 # --- interference ----------------------------------------------------------------------------
 CLASH_MIN = 0.3                     # flag clearances below this
@@ -145,6 +163,7 @@ Z_PCB_BOT = -PCB_T
 Z_FLOOR_TOP = Z_PCB_BOT - UNDER_BOARD
 Z_DESK = Z_FLOOR_TOP - FLOOR_T
 Z_SPLIT = Z_PCB_BOT
+FOOT_PROUD = FOOT_H - FOOT_POCKET_DEPTH          # 1.2: tray underside above the desk
 BODY_H = LID_TOP - Z_DESK
 OUT_W = PCB_W + 2 * (BOARD_CLR + WALL)
 OUT_D = PCB_D + 2 * (BOARD_CLR + WALL)
