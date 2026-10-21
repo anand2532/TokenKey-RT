@@ -323,3 +323,8 @@ Silk pass: the reference designators were moved through the connector's move_foo
 - Reference: F.Cu QSPI runs over solid In1 GND. B.Cu segments reference In2 3V3, with no voids under the tracks apart from each net's own via anti-pads. None of it crosses the In2 VBUS-sense track (QSPI B.Cu stays at x ≤ 14.725).
 - Risk: the CS/IO0 B.Cu runs at y ≈ 22.85/23.2 pass near L2/DCDC_LP on the far side, with 2 planes in between. Review if the buck shows coupling.
 - PSRAM (#60): the M3 dogbone site at (14.4,22.6) is kept free.
+
+## 15. Remaining-net routing (#60)
+
+### 15.1 PSRAM is DNP and left unrouted (decided)
+U5 (APS6404L), R10, R11 and C50 are `dnp yes` in the schematic (U5's pinout and footprint are still unverified against the AP Memory datasheet). Their nets are deliberately left unrouted: PSRAM_CS, PSRAM_CLK, PSRAM_IO0–IO3, and the QSPIB_SCLK leg to R11. Any `unconnected_items` left in DRC at the end of #60 are DNP-only; DRC exclusion or "unconnected" reporting for them is handled at the end of #60. The M3 dog-bone site and the B.Cu corridor to U5 stay free of other routing.
