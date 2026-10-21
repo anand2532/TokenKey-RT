@@ -307,3 +307,19 @@ Silk pass: the reference designators were moved through the connector's move_foo
 - The connector's set_design_rules has no field for minimum annular ring, hole clearance or copper-to-edge, so the §4.1 floors (min clearance 0.10, raised from 0.09 on layout-minimums; min track 0.10; annular 0.075, hole clearance 0.20, copper-to-edge 0.30) were written into the `TokenKey-RT.kicad_pro` design settings. The connector had also dropped the `sheets` list from that file; it was restored.
 - `.kicad_dru` fix: the "USB keep-away from other signals" rule now skips pad-to-pad pairs. Once the USB_HS class was active it flagged the fixed 0.5 mm pin pitch of J1 and U6 (6 errors). It still applies to tracks and vias.
 - No BGA fan-out vias yet (optional in the brief and skipped). Routing is the next phase.
+
+## 14. QSPI flash routing (#59)
+
+- Topology: RT1062 L3 (CS), L4 (SCLK), P3/N4/P4/P5 (IO0–3) go to U4 W25Q64. SCLK goes through R9 (22 Ω, QSPIA_SCLK → FLASH_CLK). R8 10k pull-up is on FLASH_CS. Track widths are 0.10 mm inside the U1 courtyard and 0.15 mm outside.
+- Vias:
+  - CS uses a dogbone to B.Cu at (13.75,21.95).
+  - SCLK uses via-in-pad on L4.
+  - IO0 uses via-in-pad on P3.
+  - These BGA vias are 0.30/0.15 and must be **filled and capped**, VIPPO.
+  - SCLK B.Cu lands with via-in-pad on R9 pin 1 (0.6/0.3, also filled/capped).
+  - CLK and IO3 hop to B.Cu under the flash body to reach the top-row pins.
+  - All 10 QSPI vias are tented.
+- Lengths in mm: SCLK chain 21.07, IO0 21.35, IO1 21.23, IO2 21.20, IO3 20.83. All IO are within 0.52 mm of SCLK. CS is 24.54 including the R8 branch and is not matched.
+- Reference: F.Cu QSPI runs over solid In1 GND. B.Cu segments reference In2 3V3, with no voids under the tracks apart from each net's own via anti-pads. None of it crosses the In2 VBUS-sense track (QSPI B.Cu stays at x ≤ 14.725).
+- Risk: the CS/IO0 B.Cu runs at y ≈ 22.85/23.2 pass near L2/DCDC_LP on the far side, with 2 planes in between. Review if the buck shows coupling.
+- PSRAM (#60): the M3 dogbone site at (14.4,22.6) is kept free.
