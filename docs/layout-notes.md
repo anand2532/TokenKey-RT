@@ -316,10 +316,10 @@ Silk pass: the reference designators were moved through the connector's move_foo
   - SCLK uses via-in-pad on L4.
   - IO0 uses via-in-pad on P3.
   - These BGA vias are 0.30/0.15 and must be **filled and capped**, VIPPO.
-  - SCLK B.Cu lands with via-in-pad on R9 pin 1 (0.6/0.3, also filled/capped).
+  - SCLK B.Cu lands on R9 pin 1 through an **off-pad dog-bone**. The 0.6/0.3 via is at (11.40, 26.40), with a 0.15 mm F.Cu stub to pad centre (11.99, 26.40). This replaced the earlier via-in-pad, which DFM flagged as oversized for the 0402 pad (tombstoning risk). To make room, the IO0 B.Cu length-match U moved from x 11.2/10.6 to x 10.85/10.55 (same length). FLASH_CLK was shortened to keep the match: a 45° exit from R9 pin 2, and a 45° approach into the flash-side via at (3.685, 23.0).
   - CLK and IO3 hop to B.Cu under the flash body to reach the top-row pins.
   - All 10 QSPI vias are tented.
-- Lengths in mm: SCLK chain 21.07, IO0 21.35, IO1 21.23, IO2 21.20, IO3 20.83. All IO are within 0.52 mm of SCLK. CS is 24.54 including the R8 branch and is not matched.
+- Lengths in mm: SCLK chain 21.06 after the dog-bone change (was 21.07), IO0 21.35, IO1 21.23, IO2 21.20, IO3 20.83. All IO are within 0.52 mm of SCLK. CS is 24.54 including the R8 branch and is not matched.
 - Reference: F.Cu QSPI runs over solid In1 GND. B.Cu segments reference In2 3V3, with no voids under the tracks apart from each net's own via anti-pads. None of it crosses the In2 VBUS-sense track (QSPI B.Cu stays at x ≤ 14.725).
 - Risk: the CS/IO0 B.Cu runs at y ≈ 22.85/23.2 pass near L2/DCDC_LP on the far side, with 2 planes in between. Review if the buck shows coupling.
 - PSRAM (#60): the M3 dogbone site at (14.4,22.6) is kept free.
