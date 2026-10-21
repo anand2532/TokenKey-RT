@@ -7,6 +7,9 @@ Enclosure and industrial design for TokenKey RT. Everything enclosure-related (r
 | [research.md](research.md) | User research with cited sources, the board facts that drive the enclosure, the OLED window, standoff and USB-C analysis, three design directions, PM decisions and open items |
 | [cad/](cad/README.md) | **Direction A puck**, parametric CadQuery model:<br>• `params.py` holds every dimension<br>• `build.py` / `Makefile` regenerate everything<br>• board keep-out model and interference checks |
 | [freecad/](freecad/README.md) | **FreeCAD 1.0 port** (#63): `puck.FCStd` (Params/Points/Plate spreadsheets + one Part per part), `assembly.FCStd` with the board keep-out, STEP/STL in `freecad/exports/`, and `VALIDATION.md` against the CadQuery reference |
+| [PRINTING.md](PRINTING.md) | **v0.2 print package** (#72): material, orientation, settings, tolerances and coupon, post-processing, assembly order, fit-print checklist (incl. #55) |
+| [BOM.md](BOM.md) | Mechanical BOM with example part numbers; **not ordered, gated on PoC G1–G5** |
+| `exports/print/` | Print-ready, pre-oriented STLs per printed part + `tolerance_coupon.stl` (`cad/print_export.py`, `make print`) |
 | `exports/` | Generated outputs:<br>• STEP per part, `assembly.step` and `board_keepout.step`<br>• STL per part<br>• `interference_report.md` and `summary.json` |
 | `renders/` | Generated PNGs: isometric, exploded, OLED/USB-C section, bottom and rear |
 | `tools/board_extract.py` | Dumps outline, holes and footprints (position, courtyard, pads, 3D model refs) from the `.kicad_pcb` with the KiCad 9 pcbnew Python API |
