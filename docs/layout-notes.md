@@ -316,10 +316,18 @@ Silk pass: the reference designators were moved through the connector's move_foo
   - SCLK uses via-in-pad on L4.
   - IO0 uses via-in-pad on P3.
   - These BGA vias are 0.30/0.15 and must be **filled and capped**, VIPPO.
-  - SCLK B.Cu lands with via-in-pad on R9 pin 1 (0.6/0.3, also filled/capped).
+  - SCLK B.Cu lands on R9 pin 1 through an **off-pad dog-bone**. The 0.6/0.3 via is at (11.40, 26.40), with a 0.15 mm F.Cu stub to pad centre (11.99, 26.40). This replaced the earlier via-in-pad, which DFM flagged as oversized for the 0402 pad (tombstoning risk). To make room, the IO0 B.Cu length-match U moved from x 11.2/10.6 to x 10.85/10.55 (same length). FLASH_CLK was shortened to keep the match: a 45° exit from R9 pin 2, and a 45° approach into the flash-side via at (3.685, 23.0).
   - CLK and IO3 hop to B.Cu under the flash body to reach the top-row pins.
   - All 10 QSPI vias are tented.
-- Lengths in mm: SCLK chain 21.07, IO0 21.35, IO1 21.23, IO2 21.20, IO3 20.83. All IO are within 0.52 mm of SCLK. CS is 24.54 including the R8 branch and is not matched.
+- Lengths in mm: SCLK chain 21.06 after the dog-bone change (was 21.07), IO0 21.35, IO1 21.23, IO2 21.20, IO3 20.83. All IO are within 0.52 mm of SCLK. CS is 24.54 including the R8 branch and is not matched.
 - Reference: F.Cu QSPI runs over solid In1 GND. B.Cu segments reference In2 3V3, with no voids under the tracks apart from each net's own via anti-pads. None of it crosses the In2 VBUS-sense track (QSPI B.Cu stays at x ≤ 14.725).
 - Risk: the CS/IO0 B.Cu runs at y ≈ 22.85/23.2 pass near L2/DCDC_LP on the far side, with 2 planes in between. Review if the buck shows coupling.
 - PSRAM (#60): the M3 dogbone site at (14.4,22.6) is kept free.
+
+## 15. Remaining-net routing (#60)
+
+### 15.1 PSRAM is DNP and left unrouted (decided)
+U5 (APS6404L), R10, R11 and C50 are `dnp yes` in the schematic (U5's pinout and footprint are still unverified against the AP Memory datasheet). Their nets are deliberately left unrouted: PSRAM_CS, PSRAM_CLK, PSRAM_IO0–IO3, and the QSPIB_SCLK leg to R11. Any `unconnected_items` left in DRC at the end of #60 are DNP-only; DRC exclusion or "unconnected" reporting for them is handled at the end of #60. The M3 dog-bone site and the B.Cu corridor to U5 stay free of other routing.
+
+### 15.2 CC1 pad-pitch-limited breakout (PM-approved, #60)
+CC1 (J1 A5) cannot leave its pad 0.5 mm clear of the J1 USB pin field (B-row DN via-in-pad at 16.25/31.80, DP neck at x ≈ 16.05). `.kicad_dru` rule "J1 CC1 pad-pitch-limited breakout" drops the USB keep-away to 0.15 mm for CC1 copper that intersects the J1 courtyard only. CC1 route: A5 straight up to y 31.20, then 45° to R12 pad 1 (F.Cu, 0.15 mm, no vias). All other USB copper keeps 0.5 mm.

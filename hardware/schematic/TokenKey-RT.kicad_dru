@@ -86,6 +86,15 @@
   (condition "A.hasNetclass('USB_HS') && !B.hasNetclass('USB_HS') && !(A.Type == 'pad' && B.Type == 'pad') && !(A.Type == 'via' && B.Type == 'pad') && !A.intersectsCourtyard('U1') && !B.intersectsCourtyard('U1')")
   (constraint clearance (min 0.50mm)))
 
+# J1 CC1 pad-pitch-limited breakout (PM-approved, #60): CC1 (A5) sits one
+# 0.5 mm pitch from the SBU/DP pin field; no track can leave the A5 pad
+# 0.5 mm clear of the J1 USB pads, the B-row via-in-pad ties and the DP/DN
+# pin-field necks. Scoped to CC1 copper inside the J1 courtyard only; default
+# 0.15 mm clearance applies there. Elsewhere USB copper keeps 0.5 mm.
+(rule "J1 CC1 pad-pitch-limited breakout"
+  (condition "A.hasNetclass('USB_HS') && B.NetName == 'CC1' && B.intersectsCourtyard('J1')")
+  (constraint clearance (min 0.15mm)))
+
 # Power (PM-approved): 0.40 mm for 3V3/VBUS trunks (net class width),
 # 0.30 mm minimum allowed for local branches.
 (rule "Power track width"
