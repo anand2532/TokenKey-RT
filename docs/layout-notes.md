@@ -127,6 +127,8 @@ The masked solve hits 90 Ω at W ≈ 0.157 mm (90.7 Ω at 0.155 mm), so it **agr
 
 Routing rules (also in the `.kicad_dru`): L1 only, **no vias**, intra-pair skew ≤ 0.15 mm, uncoupled length ≤ 3 mm (the BGA escape from row L to the body edge is about 2.7 mm; neck to 0.10 mm only inside the courtyard), ≥ 0.5 mm to other signals, ≥ 1 mm from clocks (24 MHz, 32 kHz, FlexSPI SCLK) and the DCDC switch node/inductor. L2 stays solid under the whole pair, including under the USBLC6-2SC6. Put the ESD and connector pads in the path (fly-by), with no stubs.
 
+**Routing result (#58, L1 only, no vias).** Both nets: 0.10 mm neck inside the U1 courtyard (L8/M8 escape through the column 6/7 and 8/9 channels), then 0.155 mm fly-by through the USBLC6 pins (DP 6→1, DN 4→3) into J1 A6/A7. USB_DP = USB_DN = 11.234 mm (incl. 0.10 neck), skew 0.000 mm (DN carries two small meanders at y ≈ 26 to match). Clearance to other signals ≥ 0.5 mm, 0 clearance errors. **Open deviations (need PM decision):** (1) J1 B6 (DP) and B7 (DN) are not tied: the A/B pins interleave (B7 DN–A6 DP–A7 DN–B6 DP), so the DN tie can't be made on L1 without a via, and a DP tie passes < 0.5 mm from A8/A5. (2) The pair can't hold 0.20 mm gap: the BGA channels are 1.3 mm apart and the USBLC6 flow-through pins 1.9 mm apart, so DRC reports 8 × diff_pair_gap_out_of_range and 1 × uncoupled length (11.25 mm vs 3 mm). These need a rule exception or a footprint/placement change.
+
 ## 6. USB-C connector (notes only, no footprint yet)
 
 - Part: **TYPE-C-31-M-12** (Korean Hroparts), **LCSC C165948**, USB 2.0 16-pin SMD receptacle.
