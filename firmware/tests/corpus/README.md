@@ -37,3 +37,5 @@ cache lapses plus one synthetic session).
 Note: on this subset S-protect Economy/Balanced reference recall is 99.37 % (one miss in
 docker-py request 7, `setup.py`), as in `expected_metrics.json`; the ≥ 99.9 % figure is the PoC's
 full 1,019-request run. Newest-error recall is 100 % for all S variants and G.
+
+Opt-in Economy/Balanced reference recall is 99.37% on this subset, below the 99.9% S-protect target.
