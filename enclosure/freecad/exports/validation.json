@@ -1,0 +1,413 @@
+{
+ "parts": {
+  "top_shell": {
+   "vol_cq": 6165.405230985867,
+   "vol_fc": 6165.405230985743,
+   "dvol_pct": -2.0062149170580897e-12,
+   "bbox_cq": [
+    -2.7883727010233788,
+    -2.7883727010233788,
+    -1.6000000000004633,
+    52.78837270102338,
+    42.78837270102338,
+    12.5
+   ],
+   "bbox_fc": [
+    -2.7883727010233788,
+    -2.7883727010233788,
+    -1.6,
+    52.78837270102338,
+    42.78837270102338,
+    12.5
+   ],
+   "bbox_max_dev": 4.631850458736153e-13,
+   "only_in_cq": 0.0,
+   "only_in_fc": 0.0,
+   "symdiff_pct": 0.0,
+   "valid_fc": true
+  },
+  "bottom_tray": {
+   "vol_cq": 4417.027982082263,
+   "vol_fc": 4417.0279820822225,
+   "dvol_pct": -9.265791782575023e-13,
+   "bbox_cq": [
+    -2.7883727010233788,
+    -2.7883727010233788,
+    -5.7,
+    52.78837270102338,
+    42.78837270102338,
+    -0.5999999999999996
+   ],
+   "bbox_fc": [
+    -2.7883727010233788,
+    -2.7883727010233788,
+    -5.7,
+    52.78837270102338,
+    42.78837270102338,
+    -0.5999999999999996
+   ],
+   "bbox_max_dev": 0.0,
+   "only_in_cq": 0.0,
+   "only_in_fc": 0.0,
+   "symdiff_pct": 0.0,
+   "valid_fc": true
+  },
+  "hatch_cover": {
+   "vol_cq": 339.02315972302694,
+   "vol_fc": 339.0231597230318,
+   "dvol_pct": 1.4419469236329735e-12,
+   "bbox_cq": [
+    25.099999999999536,
+    25.6,
+    -5.7,
+    44.2,
+    39.4,
+    -4.1
+   ],
+   "bbox_fc": [
+    25.1,
+    25.6,
+    -5.7,
+    44.2,
+    39.4,
+    -4.1
+   ],
+   "bbox_max_dev": 4.654054919228656e-13,
+   "only_in_cq": 0.0,
+   "only_in_fc": 0.0,
+   "symdiff_pct": 0.0,
+   "valid_fc": true
+  },
+  "knob": {
+   "vol_cq": 2591.583163982825,
+   "vol_fc": 2591.583163982521,
+   "dvol_pct": -1.1739001162343585e-11,
+   "bbox_cq": [
+    32.69966629751465,
+    13.299666297514651,
+    9.5,
+    51.100333702485344,
+    31.70033370248535,
+    26.0
+   ],
+   "bbox_fc": [
+    32.69966629751465,
+    13.299666297514651,
+    9.5,
+    51.100333702485344,
+    31.70033370248535,
+    26.0
+   ],
+   "bbox_max_dev": 0.0,
+   "only_in_cq": 0.0,
+   "only_in_fc": 0.0,
+   "symdiff_pct": 0.0,
+   "valid_fc": true
+  },
+  "button_cap_btn1": {
+   "vol_cq": 97.94178892963765,
+   "vol_fc": 97.94178892963924,
+   "dvol_pct": 1.625062953716372e-12,
+   "bbox_cq": [
+    35.51049793932749,
+    5.5,
+    0.4999999999999998,
+    40.48950206067251,
+    14.5,
+    8.3
+   ],
+   "bbox_fc": [
+    35.51049793932749,
+    5.5,
+    0.5,
+    40.48950206067251,
+    14.5,
+    8.3
+   ],
+   "bbox_max_dev": 2.220446049250313e-16,
+   "only_in_cq": 0.0,
+   "only_in_fc": 0.0,
+   "symdiff_pct": 0.0,
+   "valid_fc": true
+  },
+  "button_cap_btn2": {
+   "vol_cq": 97.94178892963764,
+   "vol_fc": 97.94178892963922,
+   "dvol_pct": 1.6105534630581904e-12,
+   "bbox_cq": [
+    41.51049793932749,
+    5.5,
+    0.4999999999999998,
+    46.48950206067251,
+    14.5,
+    8.3
+   ],
+   "bbox_fc": [
+    41.51049793932749,
+    5.5,
+    0.5,
+    46.48950206067251,
+    14.5,
+    8.3
+   ],
+   "bbox_max_dev": 2.220446049250313e-16,
+   "only_in_cq": 0.0,
+   "only_in_fc": 0.0,
+   "symdiff_pct": 0.0,
+   "valid_fc": true
+  },
+  "light_pipe": {
+   "vol_cq": 21.99114857512844,
+   "vol_fc": 21.99114857512855,
+   "dvol_pct": 4.846559514611097e-13,
+   "bbox_cq": [
+    35.0,
+    30.9,
+    1.0,
+    38.0,
+    33.9,
+    7.5
+   ],
+   "bbox_fc": [
+    35.0,
+    30.9,
+    1.0,
+    38.0,
+    33.9,
+    7.5
+   ],
+   "bbox_max_dev": 0.0,
+   "only_in_cq": 0.0,
+   "only_in_fc": 0.0,
+   "symdiff_pct": 0.0,
+   "valid_fc": true
+  },
+  "ballast": {
+   "vol_cq": 1496.6832386309975,
+   "vol_fc": 1496.6850822719687,
+   "dvol_pct": 0.0001231817744454943,
+   "bbox_cq": [
+    0.10760773926849411,
+    0.09999999999952253,
+    -4.1,
+    49.90000000000014,
+    39.90000000000014,
+    -2.9
+   ],
+   "bbox_fc": [
+    0.10759999999992023,
+    0.1,
+    -4.1,
+    49.9,
+    39.9,
+    -2.9
+   ],
+   "bbox_max_dev": 7.739268573878078e-06,
+   "only_in_cq": 0.0012816779507468278,
+   "only_in_fc": 0.0031249937573212885,
+   "symdiff_pct": 0.00029442914802058306,
+   "valid_fc": true
+  },
+  "feet": {
+   "vol_cq": 522.9111657080417,
+   "vol_fc": 522.9111657080391,
+   "dvol_pct": -5.000461720982059e-13,
+   "bbox_cq": [
+    5.724550808845043,
+    -0.2754491911549568,
+    -6.9,
+    51.57544919115495,
+    40.275449191154955,
+    -4.7
+   ],
+   "bbox_fc": [
+    5.724550808845043,
+    -0.2754491911549568,
+    -6.9,
+    51.57544919115495,
+    40.275449191154955,
+    -4.7
+   ],
+   "bbox_max_dev": 0.0,
+   "only_in_cq": 0.0,
+   "only_in_fc": 0.0,
+   "symdiff_pct": 0.0,
+   "valid_fc": true
+  },
+  "knob_sleeve": {
+   "vol_cq": 163.07270562841066,
+   "vol_fc": 163.07270562839295,
+   "dvol_pct": -1.0858178201500826e-11,
+   "bbox_cq": [
+    37.91,
+    18.509999999999998,
+    15.5,
+    45.89,
+    26.490000000000002,
+    22.5
+   ],
+   "bbox_fc": [
+    37.91,
+    18.509999999999998,
+    15.5,
+    45.89,
+    26.490000000000002,
+    22.5
+   ],
+   "bbox_max_dev": 0.0,
+   "only_in_cq": 0.0,
+   "only_in_fc": 0.0,
+   "symdiff_pct": 0.0,
+   "valid_fc": true
+  }
+ },
+ "interference": [
+  {
+   "a": "top_shell",
+   "b": "bottom_tray",
+   "overlap": 0.0,
+   "dist": 0.0,
+   "status": "ok"
+  },
+  {
+   "a": "top_shell",
+   "b": "knob",
+   "overlap": 0.0,
+   "dist": 0.14999999999999541,
+   "status": "ok"
+  },
+  {
+   "a": "top_shell",
+   "b": "button_cap_btn1",
+   "overlap": 0.0,
+   "dist": 0.0,
+   "status": "ok"
+  },
+  {
+   "a": "top_shell",
+   "b": "button_cap_btn2",
+   "overlap": 0.0,
+   "dist": 0.0,
+   "status": "ok"
+  },
+  {
+   "a": "top_shell",
+   "b": "light_pipe",
+   "overlap": 0.0,
+   "dist": 0.0,
+   "status": "ok"
+  },
+  {
+   "a": "bottom_tray",
+   "b": "hatch_cover",
+   "overlap": 0.0,
+   "dist": 0.0,
+   "status": "ok"
+  },
+  {
+   "a": "bottom_tray",
+   "b": "ballast",
+   "overlap": 0.0,
+   "dist": 0.0,
+   "status": "ok"
+  },
+  {
+   "a": "bottom_tray",
+   "b": "feet",
+   "overlap": 0.0,
+   "dist": 0.0,
+   "status": "ok"
+  },
+  {
+   "a": "hatch_cover",
+   "b": "ballast",
+   "overlap": 0.0,
+   "dist": 1.3601470508735458,
+   "status": "ok"
+  },
+  {
+   "a": "hatch_cover",
+   "b": "feet",
+   "overlap": 0.0,
+   "dist": 0.0,
+   "status": "ok"
+  },
+  {
+   "a": "knob",
+   "b": "knob_sleeve",
+   "overlap": 0.0,
+   "dist": 0.009999999999996664,
+   "status": "ok"
+  },
+  {
+   "a": "top_shell",
+   "b": "board keep-out (all solids)",
+   "overlap": 0.0,
+   "dist": null,
+   "status": "ok"
+  },
+  {
+   "a": "bottom_tray",
+   "b": "board keep-out (all solids)",
+   "overlap": 0.0,
+   "dist": null,
+   "status": "ok"
+  },
+  {
+   "a": "hatch_cover",
+   "b": "board keep-out (all solids)",
+   "overlap": 0,
+   "dist": null,
+   "status": "ok"
+  },
+  {
+   "a": "knob",
+   "b": "board keep-out (all solids)",
+   "overlap": 0.0,
+   "dist": null,
+   "status": "ok"
+  },
+  {
+   "a": "button_cap_btn1",
+   "b": "board keep-out (all solids)",
+   "overlap": 0.0,
+   "dist": null,
+   "status": "ok"
+  },
+  {
+   "a": "button_cap_btn2",
+   "b": "board keep-out (all solids)",
+   "overlap": 0.0,
+   "dist": null,
+   "status": "ok"
+  },
+  {
+   "a": "light_pipe",
+   "b": "board keep-out (all solids)",
+   "overlap": 0.0,
+   "dist": null,
+   "status": "ok"
+  },
+  {
+   "a": "ballast",
+   "b": "board keep-out (all solids)",
+   "overlap": 0.0,
+   "dist": null,
+   "status": "ok"
+  },
+  {
+   "a": "feet",
+   "b": "board keep-out (all solids)",
+   "overlap": 0,
+   "dist": null,
+   "status": "ok"
+  },
+  {
+   "a": "knob_sleeve",
+   "b": "board keep-out (all solids)",
+   "overlap": 0.0,
+   "dist": null,
+   "status": "ok"
+  }
+ ]
+}

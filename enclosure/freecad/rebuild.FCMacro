@@ -1,0 +1,10 @@
+# FreeCAD macro: regenerate every part of the active puck document from its Params / Points / Plate sheets.
+# Edit a value in the Params sheet (column B, aliased by the params.py name), then run this macro.
+import os, sys
+import FreeCAD as App
+doc = App.ActiveDocument
+here = os.path.dirname(doc.FileName) if doc and doc.FileName else os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, here)
+import importlib, fc_parts
+importlib.reload(fc_parts)
+fc_parts.rebuild(doc)
