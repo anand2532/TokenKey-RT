@@ -62,11 +62,11 @@
   "PCBA (estimate)": 9.0,
   "4x M2x8 screws + inserts": 2.4
  },
- "mass_total_g": 39.5,
+ "mass_total_g": 39.6,
  "overall_on_feet_mm": 14.4,
  "feet": {
   "n": 5,
-  "d": 7.9,
+  "d": 8.0,
   "h": 2.2,
   "pocket_depth": 1.0,
   "proud": 1.2000000000000002,
@@ -129,7 +129,7 @@
   ],
   "knob axis": "inside",
   "SW3": "inside",
-  "SW4": 14.91
+  "SW4": 14.92
  },
  "checks_bad": 0,
  "fpc_plan_clearance": 1.44,

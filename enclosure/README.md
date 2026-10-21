@@ -7,6 +7,9 @@ Enclosure and industrial design for TokenKey RT. Everything enclosure-related (r
 | [research.md](research.md) | User research with cited sources, the board facts that drive the enclosure, the OLED window, standoff and USB-C analysis, three design directions, PM decisions and open items |
 | [cad/](cad/README.md) | **Direction A puck**, parametric CadQuery model:<br>• `params.py` holds every dimension<br>• `build.py` / `Makefile` regenerate everything<br>• board keep-out model and interference checks |
 | [freecad/](freecad/README.md) | **FreeCAD 1.0 port** (#63): `puck.FCStd` (Params/Points/Plate spreadsheets + one Part per part), `assembly.FCStd` with the board keep-out, STEP/STL in `freecad/exports/`, and `VALIDATION.md` against the CadQuery reference |
+| [PRINTING.md](PRINTING.md) | **v0.2 print package** (#72): material, orientation, settings, tolerances and coupon, post-processing, assembly order, fit-print checklist (incl. #55) |
+| [BOM.md](BOM.md) | Mechanical BOM with example part numbers; **not ordered, gated on PoC G1–G5** |
+| `exports/print/` | Print-ready, pre-oriented STLs per printed part + `tolerance_coupon.stl` (`cad/print_export.py`, `make print`) |
 | `exports/` | Generated outputs:<br>• STEP per part, `assembly.step` and `board_keepout.step`<br>• STL per part<br>• `interference_report.md` and `summary.json` |
 | `renders/` | Generated PNGs: isometric, exploded, OLED/USB-C section, bottom and rear |
 | `tools/board_extract.py` | Dumps outline, holes and footprints (position, courtyard, pads, 3D model refs) from the `.kicad_pcb` with the KiCad 9 pcbnew Python API |
@@ -32,3 +35,20 @@ Enclosure and industrial design for TokenKey RT. Everything enclosure-related (r
 
 ## Status
 Research done; Direction A approved; prototype CAD in `cad/` (issue #42; #52 FPC and #54 EC11 follow-ups). No printing or purchases until the PoC spend gate (G1–G5 in `docs/decisions.md`) is passed.
+
+
+## v1 decisions (PM, #72) — supersede anything above that conflicts
+
+- **Source of truth: FreeCAD is authoritative** (`freecad/puck.FCStd`, Params sheet). Edit the
+  sheet, then `freecadcmd -c "exec(open('export_fc.py').read())"` and `print_fc.py` in `freecad/`.
+  CadQuery (`cad/`) is a **reference only**: keep its `params.py` mirrored, rerun `validate_fc.py`
+  to check the two agree (VALIDATION.md: all parts within tolerance, 0 clashes).
+- **Print STLs** in `exports/print/` are written by `freecad/print_fc.py` from the FreeCAD model
+  (tolerance coupon still from `cad/print_export.py`). Checked against the previous CadQuery print
+  STLs: volumes within 0.01 %, extents within 0.005 mm, all watertight.
+- **Feet: silicone by default** — Ø8.0 × 2.2 mm clear silicone bumpers (e.g. ETOL ARF2003 class),
+  ×5. **Alternate: 3M Bumpon SJ5302** (polyurethane, Ø7.9 × 2.2). Pocket stays Ø8.4 × 1.0 so both fit.
+- **Flick-spin:** silicone feet resist the puck walking when the knob is flicked hard; a fast flick
+  can still rotate a 40 g puck on a slick desk. Expected, not a defect; note in the fit checklist.
+- **No window pocket in v1:** the lid OLED opening is a plain chamfered through-window. The smoked
+  acrylic insert is a possible later revision only, not part of v1 CAD or BOM.

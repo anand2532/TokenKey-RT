@@ -20,7 +20,7 @@
 | button_cap_btn2 | 97.94 | 97.94 | +0.0000 % | 0.0000 | 0.000 | 0.0000 % | True | pass |
 | light_pipe | 21.99 | 21.99 | +0.0000 % | 0.0000 | 0.000 | 0.0000 % | True | pass |
 | ballast | 1496.68 | 1496.69 | +0.0001 % | 0.0000 | 0.004 | 0.0003 % | True | pass |
-| feet | 522.91 | 522.91 | -0.0000 % | 0.0000 | 0.000 | 0.0000 % | True | pass |
+| feet | 536.43 | 536.43 | -0.0000 % | 0.0000 | 0.000 | 0.0000 % | True | pass |
 | knob_sleeve | 163.07 | 163.07 | -0.0000 % | 0.0000 | 0.000 | 0.0000 % | True | pass |
 
 **Result: all parts pass.** The two models share the OpenCascade kernel and the same recipe, so they agree to meshing/boolean round-off. The largest gap is the steel plate's 0.0003 % symmetric difference, from the 16k-entity polygon outline being re-triangulated. No gap needs explaining against the 1 % budget.

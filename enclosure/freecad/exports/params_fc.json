@@ -1,0 +1,276 @@
+{
+ "params": {
+  "B3U_H": 1.6,
+  "B3U_STROKE": 0.15,
+  "BALLAST_RHO": 7.85,
+  "BOARD_CLR": 0.5,
+  "BODY_H": 13.2,
+  "BOOT_HOLE_D": 1.8,
+  "BOOT_TUBE_GAP": 0.3,
+  "BOOT_TUBE_OD": 3.6,
+  "BOSS_D": 4.6,
+  "CAP_ARM_BUMP": 0.3,
+  "CAP_ARM_L": 2.5,
+  "CAP_ARM_T": 0.35,
+  "CAP_ARM_W": 2.0,
+  "CAP_D": 4.6,
+  "CAP_FOOT_D": 1.2,
+  "CAP_FOOT_OFS": 2.5,
+  "CAP_FREE": 0.3,
+  "CAP_HOLE_D": 5.0,
+  "CAP_PROUD": 0.8,
+  "CAP_STOP_EXTRA": 0.05,
+  "CLASH_MIN": 0.3,
+  "COLLAR_H": 5.0,
+  "COLLAR_OD": 11.0,
+  "COLLAR_TOP": 12.5,
+  "CORNER_R": 3.5,
+  "ENC_AXIS_K_0": 41.9,
+  "ENC_AXIS_K_1": 17.5,
+  "ENC_BODY_0": 12.0,
+  "ENC_BODY_1": 12.0,
+  "ENC_BODY_2": 4.5,
+  "ENC_FLAT": 4.5,
+  "ENC_FLAT_L": 10.0,
+  "ENC_HOLE_D": 7.0,
+  "ENC_LID_RELIEF_CLR": 0.3,
+  "ENC_PUSH": 1.5,
+  "ENC_SHAFT_D": 6.0,
+  "ENGAGEMENT": 9.0,
+  "FDM_FILL_FACTOR": 0.8,
+  "FLAT_START": 14.5,
+  "FLOOR_T": 1.6,
+  "FOOT_D": 8.0,
+  "FOOT_H": 2.2,
+  "FOOT_MIN_WALL": 0.8,
+  "FOOT_POCKET_CLR": 0.2,
+  "FOOT_POCKET_DEPTH": 1.0,
+  "FOOT_PROUD": 1.2000000000000002,
+  "FOOT_RHO": 1.15,
+  "FPC_BEND_INSET": 0.4,
+  "FPC_BEND_TOL": 0.2,
+  "FPC_BEND_W": 14.5,
+  "GLASS_X_0": -8.6,
+  "GLASS_X_1": 16.14,
+  "GLASS_Y_0": 3.43,
+  "GLASS_Y_1": 20.33,
+  "HATCH_0": 18.3,
+  "HATCH_1": 13.0,
+  "HATCH_CENTRE_K_0": 34.65,
+  "HATCH_CENTRE_K_1": 7.5,
+  "HATCH_COVER_T": 0.8,
+  "HATCH_RECESS": 0.5,
+  "HEADER_H": 3.0,
+  "HEADER_PIN_ABOVE": 1.0,
+  "INNER_R": 1.5,
+  "INSERT_D": 3.2,
+  "INSERT_DEPTH": 4.0,
+  "IN_X0": -0.5,
+  "IN_Y0": -0.5,
+  "J1_BODY_H": 3.26,
+  "J1_X": 17.0,
+  "J2_PIN1_0": 16.34,
+  "J2_PIN1_1": 5.0,
+  "J2_Y": 5.0,
+  "KNOB_BEARING_CLR": 0.15,
+  "KNOB_BOTTOM": 9.5,
+  "KNOB_D": 17.0,
+  "KNOB_DKEY_MARGIN": 1.0,
+  "KNOB_H": 16.5,
+  "KNOB_H_MIN": 16.5,
+  "KNOB_POCKET_TOP": 15.5,
+  "KNOB_PUSH_CLR": 0.5,
+  "KNOB_TOP": 26.0,
+  "KNOB_TOP_CLR": 0.5,
+  "KNOB_TOP_SKIN": 1.0,
+  "LED_H": 0.8,
+  "LID_GLASS_CLR": 0.35,
+  "LID_T": 1.5,
+  "LID_TOP": 7.5,
+  "LID_UNDER": 6.0,
+  "LIP_CLR": 0.15,
+  "LIP_H": 1.0,
+  "LIP_T": 1.0,
+  "LOC_PIN_BELOW": 1.6,
+  "LOC_PIN_D": 2.2,
+  "LOC_SHOULDER_D": 4.0,
+  "LOC_SHOULDER_GAP": 0.15,
+  "MIN_ENGAGEMENT": 6.0,
+  "MOD_H": 27.8,
+  "MOD_HOLE_D": 2.5,
+  "MOD_HOLE_EDGE": 2.0,
+  "MOD_W": 27.3,
+  "OLED_BACK_BAND_0": 9.3,
+  "OLED_BACK_BAND_1": 12.3,
+  "OLED_BACK_FEATURE": 1.0,
+  "OLED_MODULE_T": 2.65,
+  "OLED_PCB_T": 1.2,
+  "OLED_TOP": 5.65,
+  "OUT_D": 45.0,
+  "OUT_W": 55.0,
+  "OUT_X0": -2.5,
+  "OUT_Y0": -2.5,
+  "PCBA_MASS": 9.0,
+  "PCB_D": 40.0,
+  "PCB_T": 1.6,
+  "PCB_W": 50.0,
+  "PIN1_FROM_EDGE": 1.44,
+  "PIN1_FROM_LEFT": 9.84,
+  "PIPE_D": 2.0,
+  "PIPE_FLANGE_D": 3.0,
+  "PIPE_FLANGE_T": 0.4,
+  "PIPE_GAP": 0.2,
+  "PLATE_EDGE_GAP": 0.6,
+  "PLATE_HATCH_RIM": 1.0,
+  "PLATE_MIN_FEATURE": 3.0,
+  "PLATE_PART_GAP": 0.5,
+  "PLATE_PIN_D": 2.0,
+  "PLATE_PIN_H": 1.0,
+  "PLATE_PIN_HOLE_D": 2.4,
+  "PLATE_T": 1.2,
+  "PLATE_Z_CLR": 0.3,
+  "POST_D": 4.6,
+  "SCREW_CLR_D": 2.4,
+  "SCREW_HEAD_CB_D": 4.0,
+  "SCREW_HEAD_CB_H": 2.2,
+  "SETSCREW_INSERT_D": 4.0,
+  "SHAFT_L": 20.0,
+  "SHAFT_TOP": 24.5,
+  "SHAFT_TRIM": 0.0,
+  "SLEEVE_L": 7.0,
+  "SLEEVE_OD": 8.0,
+  "THT_TAIL": 1.5,
+  "TOP_EDGE_FILLET": 1.2,
+  "UNDER_BOARD": 2.5,
+  "USB_INNER_0": 9.5,
+  "USB_INNER_1": 3.8,
+  "USB_OUTER_0": 13.5,
+  "USB_OUTER_1": 8.0,
+  "USB_RIB_GAP": 0.3,
+  "USB_RIB_LEN": 5.0,
+  "USB_RIB_W": 1.2,
+  "USB_SKIN": 0.6,
+  "USB_Z": 1.63,
+  "WALL": 2.0,
+  "WINDOW_0": 22.74,
+  "WINDOW_1": 11.86,
+  "WINDOW_CHAMFER": 45.0,
+  "WINDOW_OFS_0": 3.81,
+  "WINDOW_OFS_1": 10.36,
+  "Z_DESK": -5.699999999999999,
+  "Z_FLOOR_TOP": -4.1,
+  "Z_PCB_BOT": -1.6,
+  "Z_SPLIT": -1.6
+ },
+ "knob_insert": "sleeve",
+ "points": {
+  "screw_holes": [
+   [
+    3.0,
+    37.0
+   ],
+   [
+    3.0,
+    3.0
+   ],
+   [
+    47.0,
+    3.0
+   ],
+   [
+    47.0,
+    37.0
+   ]
+  ],
+  "module_holes": [
+   [
+    8.5,
+    34.44
+   ],
+   [
+    8.5,
+    10.64
+   ],
+   [
+    31.8,
+    34.44
+   ],
+   [
+    31.8,
+    10.64
+   ]
+  ],
+  "window_centre": [
+   [
+    20.15,
+    24.64
+   ]
+  ],
+  "enc_axis": [
+   [
+    41.9,
+    22.5
+   ]
+  ],
+  "buttons": [
+   [
+    38.0,
+    10.0
+   ],
+   [
+    44.0,
+    10.0
+   ]
+  ],
+  "led": [
+   [
+    36.5,
+    32.4
+   ]
+  ],
+  "boot": [
+   [
+    47.6,
+    9.0
+   ]
+  ],
+  "hatch_centre": [
+   [
+    34.65,
+    32.5
+   ]
+  ],
+  "plate_pins": [
+   [
+    5.0,
+    28.0
+   ],
+   [
+    20.0,
+    10.0
+   ]
+  ],
+  "feet": [
+   [
+    10.0,
+    4.0
+   ],
+   [
+    10.0,
+    36.0
+   ],
+   [
+    40.5,
+    6.0
+   ],
+   [
+    47.3,
+    15.5
+   ],
+   [
+    38.5,
+    33.5
+   ]
+  ]
+ }
+}

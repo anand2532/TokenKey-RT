@@ -32,3 +32,20 @@ Notes:
 - **Board-derived points** (`Points`, `Plate`) come from `board_ref.json` and `plate.py`. To change them, re-run `export_params.py`; don't edit them by hand.
 - **Not live features.** The parts are rebuilt by the macro; they are not a live PartDesign feature tree. This keeps the recipe identical to CadQuery for validation. A PartDesign/Sketcher re-model is the next step once FreeCAD becomes authoritative.
 - **Hidden parts in the GUI.** Documents saved headless have no GUI view data, so the parts can open hidden. Select them and press Space, or run `rebuild.FCMacro`, which sets colours.
+
+
+## v1 decisions (PM, #72) — supersede anything above that conflicts
+
+- **Source of truth: FreeCAD is authoritative** (`freecad/puck.FCStd`, Params sheet). Edit the
+  sheet, then `freecadcmd -c "exec(open('export_fc.py').read())"` and `print_fc.py` in `freecad/`.
+  CadQuery (`cad/`) is a **reference only**: keep its `params.py` mirrored, rerun `validate_fc.py`
+  to check the two agree (VALIDATION.md: all parts within tolerance, 0 clashes).
+- **Print STLs** in `exports/print/` are written by `freecad/print_fc.py` from the FreeCAD model
+  (tolerance coupon still from `cad/print_export.py`). Checked against the previous CadQuery print
+  STLs: volumes within 0.01 %, extents within 0.005 mm, all watertight.
+- **Feet: silicone by default** — Ø8.0 × 2.2 mm clear silicone bumpers (e.g. ETOL ARF2003 class),
+  ×5. **Alternate: 3M Bumpon SJ5302** (polyurethane, Ø7.9 × 2.2). Pocket stays Ø8.4 × 1.0 so both fit.
+- **Flick-spin:** silicone feet resist the puck walking when the knob is flicked hard; a fast flick
+  can still rotate a 40 g puck on a slick desk. Expected, not a defect; note in the fit checklist.
+- **No window pocket in v1:** the lid OLED opening is a plain chamfered through-window. The smoked
+  acrylic insert is a possible later revision only, not part of v1 CAD or BOM.

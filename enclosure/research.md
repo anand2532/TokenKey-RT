@@ -341,3 +341,20 @@ Direction A (the puck) is **approved**. The PM answered the open decisions as fo
 - [S41] TokenKey `docs/decisions.md`, row "OLED HS96L03W2C03 mechanicals" (PR #25, `issue-24-l2-inductor` @ f2465ab): https://github.com/anand2532/TokenKey-RT/pull/25
 
 *Most review claims come from search-result summaries. Pages fetched and read directly this pass: S5, S8, S14, S26. Check the others before quoting them in marketing or final specs.*
+
+
+## v1 decisions (PM, #72) — supersede anything above that conflicts
+
+- **Source of truth: FreeCAD is authoritative** (`freecad/puck.FCStd`, Params sheet). Edit the
+  sheet, then `freecadcmd -c "exec(open('export_fc.py').read())"` and `print_fc.py` in `freecad/`.
+  CadQuery (`cad/`) is a **reference only**: keep its `params.py` mirrored, rerun `validate_fc.py`
+  to check the two agree (VALIDATION.md: all parts within tolerance, 0 clashes).
+- **Print STLs** in `exports/print/` are written by `freecad/print_fc.py` from the FreeCAD model
+  (tolerance coupon still from `cad/print_export.py`). Checked against the previous CadQuery print
+  STLs: volumes within 0.01 %, extents within 0.005 mm, all watertight.
+- **Feet: silicone by default** — Ø8.0 × 2.2 mm clear silicone bumpers (e.g. ETOL ARF2003 class),
+  ×5. **Alternate: 3M Bumpon SJ5302** (polyurethane, Ø7.9 × 2.2). Pocket stays Ø8.4 × 1.0 so both fit.
+- **Flick-spin:** silicone feet resist the puck walking when the knob is flicked hard; a fast flick
+  can still rotate a 40 g puck on a slick desk. Expected, not a defect; note in the fit checklist.
+- **No window pocket in v1:** the lid OLED opening is a plain chamfered through-window. The smoked
+  acrylic insert is a possible later revision only, not part of v1 CAD or BOM.
