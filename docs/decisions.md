@@ -37,5 +37,6 @@
 | User buttons (issue #45) | 2026-10-19, TokenKey PM: B3U user buttons kept, with **printed plunger caps** in the enclosure. |
 | Mounting holes (issue #45) | 2026-10-19, TokenKey PM: the M2 holes H1-H4 are **NPTH** (no chassis-GND pad). |
 | Board minimums (issue #45) | 2026-10-19, TokenKey PM: minimum track and clearance are **0.10 / 0.10 mm** (raised from 0.09). |
+| Enclosure weight (issue #53) | 2026-10-21, TokenKey PM (Anand's answer was still pending): keep the **slim 13.2 mm puck** and **drop the 120 g target**. Stability comes from five stock silicone feet (about 7.9 x 2.2 mm, in pockets) and a 1.2 mm steel plate under the board (about 49.8 x 39.8 mm, 11.7 g). The total is about 39.5 g. Interference check: 384 pairs, 0 clashes. |
 
 All items remain subject to engineering verification per [baseline spec section 8](baseline-specs.md#8-design-constraints).
