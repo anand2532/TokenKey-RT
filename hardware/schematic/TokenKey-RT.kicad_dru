@@ -53,11 +53,27 @@
 # ---------- Net classes ----------
 (rule "USB 90R differential pair"
   (condition "A.hasNetclass('USB_HS')")
-  (constraint track_width (min 0.145mm) (opt 0.155mm) (max 0.165mm))
-  (constraint diff_pair_gap (min 0.18mm) (opt 0.20mm) (max 0.22mm))
-  (constraint diff_pair_uncoupled (max 3mm))
+  (constraint track_width (min 0.145mm) (opt 0.155mm) (max 0.20mm))
+  (constraint diff_pair_gap (min 0.18mm) (opt 0.20mm) (max 2.0mm))
+  (constraint diff_pair_uncoupled (max 12mm))
   (constraint skew (max 0.15mm))
-  (constraint via_count (max 0)))
+  (constraint via_count (max 2)))
+# PM-approved exception (#58): the BGA channels (1.3 mm apart) and the USBLC6
+# flow-through pins (1.9 mm apart) prevent a coupled 0.20 mm gap, so the pair
+# runs mostly uncoupled: gap max relaxed to 2.0 mm, uncoupled max 12 mm.
+# Uncoupled L1 sections use 0.185 mm (~45 ohm single-ended over In1 GND,
+# JLC04161H-3313; see layout-notes 5). Two vias per net are the J1 B-row
+# via-in-pad ties (A6-B6 DP, B7-A7 DN on B.Cu).
+
+# J1 B-row via-in-pad (PM-approved, #58): 0.15/0.30 mm via inside the 0.3 mm
+# J1 pads, filled and capped (order note). Exempt from the 0.5 mm USB
+# keep-away against the neighbouring J1 pads (pad-pitch-limited, like the
+# pad-to-pad exclusion); default 0.15 mm clearance still applies.
+(rule "J1 USB via-in-pad"
+  (condition "A.Type == 'via' && A.hasNetclass('USB_HS')")
+  (constraint hole_size (min 0.15mm))
+  (constraint via_diameter (min 0.30mm))
+  (constraint annular_width (min 0.075mm)))
 
 (rule "USB neck-down inside BGA"
   (layer outer)
@@ -67,7 +83,7 @@
 # Pad-to-pad pairs are excluded: the USB-C (0.5 mm pitch) and USBLC6 pins are
 # fixed by the footprints; the 0.5 mm keep-away is for routed copper.
 (rule "USB keep-away from other signals"
-  (condition "A.hasNetclass('USB_HS') && !B.hasNetclass('USB_HS') && !(A.Type == 'pad' && B.Type == 'pad') && !A.intersectsCourtyard('U1') && !B.intersectsCourtyard('U1')")
+  (condition "A.hasNetclass('USB_HS') && !B.hasNetclass('USB_HS') && !(A.Type == 'pad' && B.Type == 'pad') && !(A.Type == 'via' && B.Type == 'pad') && !A.intersectsCourtyard('U1') && !B.intersectsCourtyard('U1')")
   (constraint clearance (min 0.50mm)))
 
 # Power (PM-approved): 0.40 mm for 3V3/VBUS trunks (net class width),
