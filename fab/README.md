@@ -76,6 +76,8 @@ BGA via check at 0.65 mm pitch: hole-to-track (0.65 − 0.15)/2 − 0.05 = 0.200
 
 **Stay on 4-layer JLC04161H-3313 with board-wide Epoxy Filled & Capped (POFV) vias.**
 
+- [ ] **J1 (USB-C receptacle) via-in-pad (PR #76): J1 pads B6/B7 (B-row D+/D−) and their A-row mates A6/A7 each carry a 0.15/0.30 mm via inside the 0.30 × 1.45 mm SMD pad (USB_DP: A6, B6; USB_DN: A7, B7). These vias MUST be Epoxy Filled & Copper Capped (JLC 'Epoxy Filled & Capped' / POFV). The order must NOT drop or downgrade the POFV via-covering option** (not Tented, not Plugged, not untreated): open or plugged vias in these SMD pads wick solder and cause opens or voids on the USB pins.
+
 - Why: with a specified stackup + impedance control, JLC's form offers Plugged or Epoxy Filled & Capped, not Tented. JLC ink plugging needs ≥ 0.35 mm from mask openings ("vias with a distance less than 0.35mm from the pad cannot be plugged with ink. Such vias can be plugged with epoxy or copper"); our BGA dog-bone vias are ≈ 0.16 mm from the ball pads. Sources: https://jlcpcb.com/capabilities/pcb-capabilities (Plugged vias), https://jlcpcb.com/help/article/pcb-via-covering (updated 2026-09-09).
 - **Cost:** POFV is a paid option on 4 layers (JLC raised the 4L resin-fill price on 2026-08-06). The upcharge is **indicative only, not quoted for this config; re-quote at order time.**
 - **Cost comparison at order time only:** also quote 6L **JLC06161H-3313**, where POFV is free and default (https://jlcpcb.com/news/free-via-in-pad-6-20-layer-pcbs-pofv). **Do not switch stacks mid-routing**: a 6L stack would redo the impedance work (USB 0.155/0.20, 50 Ω 0.151) and the net-class rules.
@@ -103,7 +105,7 @@ Parts come from `out/<sha>/hand_assembly_bom.csv` (not the JLC BOM).
 
 1. **J2 header (HCTL PZ254-1-04-Z-C, C5156431), THT.** It is in the JLC BOM/CPL; if JLC does not place it (THT not selected), hand-solder it from the top, plastic flush on the board, square pad = pin 1 at (16.34, 5.0). Trim bottom leads ≤ 1.5 mm (#37).
 2. **OLED module HS96L03W2C03 (C5248080)** soldered directly onto J2's pins, no socket. Seat the module so its underside is 3.0 mm (header plastic) above the PCB: OLED top ≈ 5.65 mm, lowest module point ≈ 2.0 mm, ≈ 7.25 mm overall with the board. Trim pins above the module.
-3. **Knob** onto the EC11E18244A5 (SW2, 20 mm shaft, PCBA-placed): ~17 mm × 16.5 mm per `enclosure/cad/params.py`; part TBD in `fab/hand_assembly.csv`. Fit after the enclosure lid.
+3. **Knob** onto the EC11E18244A5 (SW2, 20 mm shaft, PCBA-placed): ~17 mm × 16.5 mm per `enclosure/cad/params.py`; printed knob (`enclosure/exports/knob.*`) + brass sleeve (`enclosure/exports/knob_sleeve.*`), see enclosure hardware BOM `enclosure/BOM.md` (items 6 and 9). Fit after the enclosure lid.
 
 ## 8. Order-time checklist (do not execute until PoC gates pass)
 
@@ -112,12 +114,13 @@ Parts come from `out/<sha>/hand_assembly_bom.csv` (not the JLC BOM).
 - [ ] 4 layers, 1.6 mm, **JLC04161H-3313** specified, impedance control on (USB 90 Ω, 50 Ω SE, ±10%)
 - [ ] Min via 0.15/0.25 band selected (small-via surcharge accepted); **10.7:1 aspect ratio, watch JLC's EQ review**
 - [ ] Via covering **Epoxy Filled & Capped (POFV)**, board-wide; note the 4L upcharge
+- [ ] **J1 (USB-C receptacle) via-in-pad (PR #76): J1 pads B6/B7 (B-row D+/D−) and their A-row mates A6/A7 each carry a 0.15/0.30 mm via inside the 0.30 × 1.45 mm SMD pad (USB_DP: A6, B6; USB_DN: A7, B7). These vias MUST be Epoxy Filled & Copper Capped (JLC 'Epoxy Filled & Capped' / POFV). The order must NOT drop or downgrade the POFV via-covering option** (not Tented, not Plugged, not untreated): open or plugged vias in these SMD pads wick solder and cause opens or voids on the USB pins.
 - [ ] Cost comparison only: also quote 6L JLC06161H-3313 (free POFV); don't switch unless PM re-opens the stackup
 - [ ] ENIG, green/white, remove order number or specify position
 - [ ] Standard PCBA, both sides, X-ray of U1; upload the **panel** zip + panel BOM/CPL (102.1 × 96.1 mm, §9), or the single board with JLC panelization
 - [ ] Panel CPL repeats designators per board (KiKit default); confirm JLC accepts this in the CPL preview, otherwise rename refs per board
 - [ ] BOM: 0 missing LCSC numbers; stock checked for every line; J2 THT handling decided
-- [ ] Hand-assembly BOM ordered separately: OLED C5248080, knob (part TBD)
+- [ ] Hand-assembly BOM ordered separately: OLED C5248080, knob = printed knob + brass sleeve (see `enclosure/BOM.md`)
 - [ ] CPL rotations checked in JLC's preview, especially U1, J1, Q1, diodes and polarized caps
 - [ ] Gerber zips checked in a viewer (layer order L1/GND/PWR/L4, drill alignment, Edge.Cuts closed, mouse bites)
 
