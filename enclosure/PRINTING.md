@@ -102,3 +102,20 @@ PETG: nozzle 235–245 °C, bed 75–80 °C, fan 30–50 %. PLA fit prints: hole
 - [ ] Service: TC2030 reachable with the hatch removed. BOOT pinhole works with a paperclip and releases cleanly.
 - [ ] Desk: no slip when turning the knob with a hand resting on the puck. No tipping when pressing SW4 hard. All 5 feet in contact, with no rocking.
 - [ ] Mass on a scale vs the CAD estimate (≈ 39.5 g).
+
+
+## v1 decisions (PM, #72) — supersede anything above that conflicts
+
+- **Source of truth: FreeCAD is authoritative** (`freecad/puck.FCStd`, Params sheet). Edit the
+  sheet, then `freecadcmd -c "exec(open('export_fc.py').read())"` and `print_fc.py` in `freecad/`.
+  CadQuery (`cad/`) is a **reference only**: keep its `params.py` mirrored, rerun `validate_fc.py`
+  to check the two agree (VALIDATION.md: all parts within tolerance, 0 clashes).
+- **Print STLs** in `exports/print/` are written by `freecad/print_fc.py` from the FreeCAD model
+  (tolerance coupon still from `cad/print_export.py`). Checked against the previous CadQuery print
+  STLs: volumes within 0.01 %, extents within 0.005 mm, all watertight.
+- **Feet: silicone by default** — Ø8.0 × 2.2 mm clear silicone bumpers (e.g. ETOL ARF2003 class),
+  ×5. **Alternate: 3M Bumpon SJ5302** (polyurethane, Ø7.9 × 2.2). Pocket stays Ø8.4 × 1.0 so both fit.
+- **Flick-spin:** silicone feet resist the puck walking when the knob is flicked hard; a fast flick
+  can still rotate a 40 g puck on a slick desk. Expected, not a defect; note in the fit checklist.
+- **No window pocket in v1:** the lid OLED opening is a plain chamfered through-window. The smoked
+  acrylic insert is a possible later revision only, not part of v1 CAD or BOM.

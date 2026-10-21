@@ -11,5 +11,5 @@ freecad:
 .PHONY: freecad
 # Print-ready STLs (#72): oriented, on z = 0
 print:
-	$(PY) print_export.py
+	$(PY) print_export.py  # coupon + reference; release print STLs: ../freecad/print_fc.py
 .PHONY: print

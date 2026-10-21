@@ -133,10 +133,10 @@ PLATE_PIN_D, PLATE_PIN_HOLE_D = 2.0, 2.4    # pins 1.0 mm tall; plate bonded wit
 PLATE_PIN_H = 1.0
 BALLAST_RHO = 7.85                  # g/cm3 steel (stainless 7.9)
 # Silicone feet (#53): stock adhesive bumpers in blind pockets in the tray underside.
-FOOT_D, FOOT_H = 7.9, 2.2           # 3M Bumpon SJ5302-class (env TK_FOOT=10x3 -> 10.0 x 3.0)
+FOOT_D, FOOT_H = 8.0, 2.2           # silicone 8.0 x 2.2 (ETOL ARF2003); alt 3M SJ5302 PU 7.9 x 2.2 (TK_FOOT=10x3 -> 10 x 3)
 if os.environ.get("TK_FOOT", "") == "10x3":
     FOOT_D, FOOT_H = 10.0, 3.0
-FOOT_POCKET_CLR = 0.25              # radial
+FOOT_POCKET_CLR = 0.20              # radial; pocket stays d 8.4 (fits 7.9 SJ5302 too)
 FOOT_POCKET_DEPTH = 1.0             # floor left 0.6 mm; foot stands FOOT_H - depth proud
 # Foot centres, CAD XY (Y = 40 - KiCad y). Five, because the east side has no free corner: the hatch
 # fills the NE corner (that foot sits ON the hatch cover) and the BOOT hole + H2 boss fill the SE corner.
