@@ -1,0 +1,41 @@
+public B caching-on baseline (no reduction) {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 100.0, 'err_recall_all': 100.0, 'net_5m_breaks_pct': 0.0, 'net_no_breaks_pct': 0.0}
+public S-protect economy {'ref_recall': 99.9, 'ref_full_pct': 99.6, 'err_recall_newest': 100.0, 'err_recall_all': 85.6, 'net_5m_breaks_pct': 18.1, 'net_no_breaks_pct': 7.4}
+public S-collapse economy {'ref_recall': 99.9, 'ref_full_pct': 99.6, 'err_recall_newest': 100.0, 'err_recall_all': 85.6, 'net_5m_breaks_pct': 18.1, 'net_no_breaks_pct': 7.4}
+public S-dedup economy {'ref_recall': 99.9, 'ref_full_pct': 99.4, 'err_recall_newest': 98.6, 'err_recall_all': 84.9, 'net_5m_breaks_pct': 28.0, 'net_no_breaks_pct': 19.6}
+public C tail-only economy {'ref_recall': 71.7, 'ref_full_pct': 62.3, 'err_recall_newest': 28.1, 'err_recall_all': 19.6, 'net_5m_breaks_pct': 59.0, 'net_no_breaks_pct': 53.9}
+public D firmware full-request economy {'ref_recall': 78.9, 'ref_full_pct': 70.9, 'err_recall_newest': 29.5, 'err_recall_all': 30.8, 'net_5m_breaks_pct': -4.2, 'net_no_breaks_pct': -22.4}
+public S-protect balanced {'ref_recall': 99.9, 'ref_full_pct': 99.7, 'err_recall_newest': 100.0, 'err_recall_all': 92.7, 'net_5m_breaks_pct': 13.3, 'net_no_breaks_pct': 1.5}
+public S-collapse balanced {'ref_recall': 99.9, 'ref_full_pct': 99.7, 'err_recall_newest': 100.0, 'err_recall_all': 92.7, 'net_5m_breaks_pct': 13.3, 'net_no_breaks_pct': 1.5}
+public S-dedup balanced {'ref_recall': 99.9, 'ref_full_pct': 99.7, 'err_recall_newest': 100.0, 'err_recall_all': 92.7, 'net_5m_breaks_pct': 23.2, 'net_no_breaks_pct': 14.2}
+public C tail-only balanced {'ref_recall': 90.4, 'ref_full_pct': 79.7, 'err_recall_newest': 58.7, 'err_recall_all': 50.6, 'net_5m_breaks_pct': 44.2, 'net_no_breaks_pct': 41.7}
+public D firmware full-request balanced {'ref_recall': 90.2, 'ref_full_pct': 82.7, 'err_recall_newest': 58.8, 'err_recall_all': 59.5, 'net_5m_breaks_pct': -50.2, 'net_no_breaks_pct': -72.9}
+public S-protect quality {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 100.0, 'err_recall_all': 99.5, 'net_5m_breaks_pct': 8.8, 'net_no_breaks_pct': -2.0}
+public S-collapse quality {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 100.0, 'err_recall_all': 99.5, 'net_5m_breaks_pct': 8.8, 'net_no_breaks_pct': -2.0}
+public S-dedup quality {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 100.0, 'err_recall_all': 99.5, 'net_5m_breaks_pct': 18.7, 'net_no_breaks_pct': 13.0}
+public C tail-only quality {'ref_recall': 93.2, 'ref_full_pct': 86.1, 'err_recall_newest': 70.6, 'err_recall_all': 60.3, 'net_5m_breaks_pct': 31.1, 'net_no_breaks_pct': 29.2}
+public D firmware full-request quality {'ref_recall': 97.0, 'ref_full_pct': 93.4, 'err_recall_newest': 91.5, 'err_recall_all': 92.1, 'net_5m_breaks_pct': -104.9, 'net_no_breaks_pct': -132.6}
+public G dedup-only {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 100.0, 'err_recall_all': 100.0, 'net_5m_breaks_pct': 17.0, 'net_no_breaks_pct': 17.0}
+public E llmtrim agent (cache markers) {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 100.0, 'err_recall_all': 100.0, 'net_5m_breaks_pct': -43.2, 'net_no_breaks_pct': -52.6}
+public E llmtrim agent (no markers) {'ref_recall': 97.6, 'ref_full_pct': 95.0, 'err_recall_newest': 83.2, 'err_recall_all': 82.7, 'net_5m_breaks_pct': -41.2, 'net_no_breaks_pct': -52.7}
+public E Tamp balanced (default) {'ref_recall': 41.5, 'ref_full_pct': 32.4, 'err_recall_newest': 20.6, 'err_recall_all': 28.7, 'net_5m_breaks_pct': 11.5, 'net_no_breaks_pct': 9.9}
+synthetic B caching-on baseline (no reduction) {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 100.0, 'err_recall_all': 100.0, 'net_5m_breaks_pct': 0.0, 'net_no_breaks_pct': 0.0}
+synthetic S-protect economy {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 100.0, 'err_recall_all': 79.8, 'net_5m_breaks_pct': 24.1, 'net_no_breaks_pct': 10.3}
+synthetic S-collapse economy {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 100.0, 'err_recall_all': 79.8, 'net_5m_breaks_pct': 24.1, 'net_no_breaks_pct': 10.3}
+synthetic S-dedup economy {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 85.1, 'err_recall_all': 71.6, 'net_5m_breaks_pct': 36.9, 'net_no_breaks_pct': 27.5}
+synthetic C tail-only economy {'ref_recall': 80.7, 'ref_full_pct': 80.7, 'err_recall_newest': 2.1, 'err_recall_all': 2.6, 'net_5m_breaks_pct': 85.3, 'net_no_breaks_pct': 82.4}
+synthetic D firmware full-request economy {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 67.8, 'err_recall_all': 55.1, 'net_5m_breaks_pct': 3.0, 'net_no_breaks_pct': -26.1}
+synthetic S-protect balanced {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 100.0, 'err_recall_all': 89.3, 'net_5m_breaks_pct': 16.4, 'net_no_breaks_pct': 0.3}
+synthetic S-collapse balanced {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 100.0, 'err_recall_all': 89.3, 'net_5m_breaks_pct': 16.4, 'net_no_breaks_pct': 0.3}
+synthetic S-dedup balanced {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 93.5, 'err_recall_all': 85.6, 'net_5m_breaks_pct': 29.2, 'net_no_breaks_pct': 17.5}
+synthetic C tail-only balanced {'ref_recall': 85.7, 'ref_full_pct': 85.7, 'err_recall_newest': 36.9, 'err_recall_all': 34.2, 'net_5m_breaks_pct': 75.2, 'net_no_breaks_pct': 75.3}
+synthetic D firmware full-request balanced {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 95.1, 'err_recall_all': 92.1, 'net_5m_breaks_pct': -85.6, 'net_no_breaks_pct': -139.4}
+synthetic S-protect quality {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 100.0, 'err_recall_all': 96.4, 'net_5m_breaks_pct': 8.4, 'net_no_breaks_pct': -5.8}
+synthetic S-collapse quality {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 100.0, 'err_recall_all': 96.4, 'net_5m_breaks_pct': 8.4, 'net_no_breaks_pct': -5.8}
+synthetic S-dedup quality {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 98.5, 'err_recall_all': 95.5, 'net_5m_breaks_pct': 21.2, 'net_no_breaks_pct': 13.5}
+synthetic C tail-only quality {'ref_recall': 90.7, 'ref_full_pct': 90.7, 'err_recall_newest': 61.1, 'err_recall_all': 60.7, 'net_5m_breaks_pct': 53.1, 'net_no_breaks_pct': 53.9}
+synthetic D firmware full-request quality {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 100.0, 'err_recall_all': 100.0, 'net_5m_breaks_pct': -84.3, 'net_no_breaks_pct': -129.6}
+synthetic G dedup-only {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 100.0, 'err_recall_all': 100.0, 'net_5m_breaks_pct': 18.3, 'net_no_breaks_pct': 19.7}
+synthetic E llmtrim agent (cache markers) {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 100.0, 'err_recall_all': 100.0, 'net_5m_breaks_pct': -6.5, 'net_no_breaks_pct': -10.0}
+synthetic E llmtrim agent (no markers) {'ref_recall': 100.0, 'ref_full_pct': 100.0, 'err_recall_newest': 100.0, 'err_recall_all': 100.0, 'net_5m_breaks_pct': -6.6, 'net_no_breaks_pct': -10.2}
+synthetic E Tamp balanced (default) {'ref_recall': 96.4, 'ref_full_pct': 96.4, 'err_recall_newest': 55.1, 'err_recall_all': 96.0, 'net_5m_breaks_pct': -12.1, 'net_no_breaks_pct': -18.5}
+EXIT 0

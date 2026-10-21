@@ -32,3 +32,6 @@ hardware/schematic/tools/netlist.json
 
 # KiCad MCP DRC output
 *_drc_violations.json
+
+# Fab pipeline output (regenerate with `make -C fab`); released packages are attached to PRs/releases
+fab/out/

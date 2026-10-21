@@ -37,5 +37,17 @@
 | User buttons (issue #45) | 2026-10-19, TokenKey PM: B3U user buttons kept, with **printed plunger caps** in the enclosure. |
 | Mounting holes (issue #45) | 2026-10-19, TokenKey PM: the M2 holes H1-H4 are **NPTH** (no chassis-GND pad). |
 | Board minimums (issue #45) | 2026-10-19, TokenKey PM: minimum track and clearance are **0.10 / 0.10 mm** (raised from 0.09). |
+| Enclosure weight (issue #53) | 2026-10-21, TokenKey PM (Anand's answer was still pending): keep the **slim 13.2 mm puck** and **drop the 120 g target**. Stability comes from five stock silicone feet (about 7.9 x 2.2 mm, in pockets) and a 1.2 mm steel plate under the board (about 49.8 x 39.8 mm, 11.7 g). The total is about 39.5 g. Interference check: 384 pairs, 0 clashes. |
 
 All items remain subject to engineering verification per [baseline spec section 8](baseline-specs.md#8-design-constraints).
+
+## DFM decision history (TokenKey DFM, from fab/stackup.md drafts)
+
+| Date (IST) | Decision | Owner | Notes |
+|---|---|---|---|
+| 2026-10-19 | BGA fanout via 0.20 mm drill / 0.35 mm pad (changed from 0.20/0.45). **Superseded by the next row.** | TokenKey PM (approved), proposed by TokenKey DFM / Layout | 0.45 pad leaves no trace channel at 0.65 mm pitch; JLC small-via surcharge accepted. |
+| 2026-10-19 | **BGA fanout via 0.15 mm drill / 0.30 mm pad, 0.10/0.10 escape tracks (current)** | TokenKey PM (approved), proposed by TokenKey DFM | 0.20/0.35 gave 0.175 mm hole-to-track vs JLC "Via hole to Track 0.2mm"; 0.15/0.30 gives 0.200 mm hole-to-track, 0.125 mm pad-to-track. POFV remains the fallback; no JLC support query. |
+| 2026-10-19 | Net classes: Default 0.15/0.15, Power 0.40 trunk / 0.30 branch, standard via 0.6/0.3, BGA via 0.30/0.15, USB_HS 0.155/0.20 (90.7 Ω, JLC04161H-3313) | TokenKey PM | USB geometry from the JLC impedance calculator. |
+| 2026-10-19 | No fab, assembly or parts spend until the PoC gates in docs/poc/ pass | Anand via TokenKey PM | Fab package prep continues; no orders, carts or committing quotes. |
+| 2026-10-21 | Fab package pipeline added (fab/Makefile, fab/scripts/); outputs go to fab/out/<sha>/ and are gitignored | TokenKey DFM (issue #62) | Via covering for BGA vias is open for PM decision (fab/README.md). |
+| 2026-10-21 | PM decisions (issue #68): 4L JLC04161H-3313 with board-wide epoxy-filled & capped vias (6L POFV only as a quote-time cost comparison); separate hand-assembly BOM (OLED C5248080 + knob/mechanical) kept out of the JLC PCBA BOM; panelize to ≥ 70×70 mm with fiducials via KiKit (2×2, 102.1 × 96.1 mm), keeping single-board outputs; 10.7:1 aspect-ratio callout | TokenKey PM | Implemented in fab/README.md, fab/stackup.md, fab/Makefile, fab/scripts/. |

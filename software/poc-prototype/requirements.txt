@@ -1,0 +1,5 @@
+tiktoken==0.14.0
+xxhash==4.0.2
+datasets==5.1.0
+pytest==9.1.1
+llmtrim==0.13.7   # only for the llmtrim comparison arm (E); PoC used the 0.13.7 manylinux wheel
