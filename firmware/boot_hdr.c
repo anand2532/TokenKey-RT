@@ -5,9 +5,15 @@
  *   0x6000_1000  Image Vector Table (IVT), 32 B
  *   0x6000_1020  Boot data, 16 B
  *
- * Flash: Winbond W25Q64JV (8 MB) on FlexSPI A, primary pins GPIO_SD_B1_06..11.
- * DQS pad (GPIO_SD_B1_05) is not connected -> readSampleClkSrc = 0 (internal loopback),
- * which limits the serial clock; we run SDR quad I/O at 50 MHz (W25Q64JV: 133 MHz max).
+ * Flash: Winbond W25Q64JVSSIQ (8 MB, U4) on FlexSPI A, primary pins GPIO_SD_B1_06..11
+ * (schematic: L3 FLASH_CS -> U4.1, L4 QSPIA_SCLK -> R9 22R -> U4.6, P3 IO0 -> U4.5 DI,
+ * N4 IO1 -> U4.2 DO, P4 IO2 -> U4.3 /WP, P5 IO3 -> U4.7 /HOLD; see docs/pinmux.md).
+ * DQS pad N3 (GPIO_SD_B1_05) is left floating on the board (pin-map: "NC - floating for
+ * loopback"), so readSampleClkSrc = 1 (loopback from DQS pad), the mode NXP recommends for
+ * an unconnected DQS pad (IMXRT1060RM Rev.3 s27.3.15.2 "RX Clock Source Features", p.1647: higher frequency than
+ * internal loopback, for devices without a read strobe; FCB field readSampleClkSrc, s9.6.3.1). Teensy 4.1
+ * runs the same W25Q64JV this way at 100 MHz (PaulStoffregen/cores teensy4/bootdata.c). We
+ * still boot at a conservative 50 MHz SDR for bring-up; 100 MHz is a later one-line change.
  *
  * Requirement: the flash QE bit (SR2[1]) must be 1. W25Q64JV-IQ ships with QE=1; a part
  * with QE=0 will not boot in 1-4-4 mode (see docs/bringup_checklist.md).
@@ -23,6 +29,7 @@
 #define LUT_RADDR_SDR   0x02u
 #define LUT_WRITE_SDR   0x08u
 #define LUT_READ_SDR    0x09u
+#define LUT_MODE8_SDR   0x07u
 #define LUT_DUMMY_SDR   0x0Cu
 #define LUT_STOP        0x00u
 #define PAD1            0x0u
@@ -116,7 +123,7 @@ const flexspi_nor_config_t g_flexspi_nor_config = {
     .memConfig = {
         .tag = 0x42464346u,         /* "FCFB" */
         .version = 0x56010400u,     /* V1.4.0 */
-        .readSampleClkSrc = 0u,     /* internal loopback: DQS pad unconnected */
+        .readSampleClkSrc = 1u,     /* loopback from DQS pad: N3 is floating on the board */
         .csHoldTime = 3u,
         .csSetupTime = 3u,
         .deviceType = 1u,           /* serial NOR */
@@ -133,9 +140,15 @@ const flexspi_nor_config_t g_flexspi_nor_config = {
             [4 * SEQ_READ + 0] = LUT_SEQ(LUT_CMD_SDR, PAD1, 0x0B, LUT_RADDR_SDR, PAD1, 24),
             [4 * SEQ_READ + 1] = LUT_SEQ(LUT_DUMMY_SDR, PAD1, 8, LUT_READ_SDR, PAD1, 4),
 #else
-            /* Fast Read Quad I/O 0xEB: 1-4-4, 24-bit addr, M7-0 + 4 dummy = 6 cycles @ 4 pads */
+            /* Fast Read Quad I/O 0xEB: 1-4-4, 24-bit addr, then the mode byte M7-0 DRIVEN as 0xFF
+             * (MODE8_SDR, 2 clocks on 4 pads) and 4 dummy clocks. Driving M5-4 != 10b keeps the
+             * W25Q64JV out of "continuous read" mode; leaving those 2 clocks as plain dummy
+             * cycles (previous LUT) let floating/keeper levels pick the mode bits. Same LUT as
+             * Teensy 4.1 (W25Q64JV) for words 0/1: 0x0A1804EB, 0x32041EFF
+             * (it uses READ_SDR operand 1, we use 4; the operand is not the AHB read size). */
             [4 * SEQ_READ + 0] = LUT_SEQ(LUT_CMD_SDR, PAD1, 0xEB, LUT_RADDR_SDR, PAD4, 24),
-            [4 * SEQ_READ + 1] = LUT_SEQ(LUT_DUMMY_SDR, PAD4, 6, LUT_READ_SDR, PAD4, 4),
+            [4 * SEQ_READ + 1] = LUT_SEQ(LUT_MODE8_SDR, PAD4, 0xFF, LUT_DUMMY_SDR, PAD4, 4),
+            [4 * SEQ_READ + 2] = LUT_SEQ(LUT_READ_SDR, PAD4, 4, LUT_STOP, PAD1, 0),
 #endif
             /* Read Status Register-1 0x05 */
             [4 * SEQ_READSTATUS] = LUT_SEQ(LUT_CMD_SDR, PAD1, 0x05, LUT_READ_SDR, PAD1, 4),

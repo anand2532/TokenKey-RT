@@ -14,7 +14,8 @@ static tk_clock_info_t s_clk;
 static bool s_uart_ready; /* fault handlers may run before uart_init() */
 
 /* ------------------------------------------------------------------------------------------ */
-/* Pin mux                                                                                     */
+/* Pin mux. Every mapping below was checked against the merged schematic netlist and PCB pad  */
+/* nets on main (a790a43); full table in docs/pinmux.md.                                        */
 /* ------------------------------------------------------------------------------------------ */
 /* SW_MUX_CTL: MUX_MODE[2:0], SION[4]. SW_PAD_CTL: SRE[0] DSE[5:3] SPEED[7:6] ODE[11] PKE[12]
  * PUE[13] PUS[15:14] HYS[16]. */
@@ -26,6 +27,8 @@ static bool s_uart_ready; /* fault handlers may run before uart_init() */
 #define PAD_SPEED(x)  ((uint32_t)(x) << 6)
 #define PAD_ODE       (1u << 11)
 #define PAD_PKE       (1u << 12)
+#define PAD_PUE       (1u << 13)
+#define PAD_PUS(x)    ((uint32_t)(x) << 14) /* 2 = 100k pull-up */
 #define PAD_HYS       (1u << 16)
 
 /* Inputs with external 10k pull-ups (+10nF on ENC_A/B): internal pull/keeper disabled, hysteresis on. */
@@ -34,6 +37,9 @@ static bool s_uart_ready; /* fault handlers may run before uart_init() */
 #define PAD_I2C       (PAD_HYS | PAD_ODE | PAD_SPEED(2) | PAD_DSE(6))
 /* LED push-pull and UART: NXP default 0x10B0 (keeper, 100 MHz, R0/6). */
 #define PAD_PUSHPULL  (PAD_PKE | PAD_SPEED(2) | PAD_DSE(6))
+/* UART RX: L14 only goes to TP2 (no external pull), so enable the 100k pull-up to keep the
+ * idle line high when nothing is attached (otherwise a floating RX produces break/noise). */
+#define PAD_UART_RX   (PAD_HYS | PAD_PUS(2) | PAD_PUE | PAD_PKE | PAD_SPEED(2) | PAD_DSE(6))
 
 static void pin(uint32_t mux_idx, uint32_t pad_idx, uint32_t mux, uint32_t pad)
 {
@@ -63,7 +69,7 @@ static void pinmux_init(void)
 
     /* Debug UART: K14 GPIO_AD_B0_12 ALT2 LPUART1_TX, L14 GPIO_AD_B0_13 ALT2 LPUART1_RX (no daisy on RT1060). */
     pin(kIOMUXC_SW_MUX_CTL_PAD_GPIO_AD_B0_12, kIOMUXC_SW_PAD_CTL_PAD_GPIO_AD_B0_12, MUX_ALT2, PAD_PUSHPULL);
-    pin(kIOMUXC_SW_MUX_CTL_PAD_GPIO_AD_B0_13, kIOMUXC_SW_PAD_CTL_PAD_GPIO_AD_B0_13, MUX_ALT2, PAD_PUSHPULL);
+    pin(kIOMUXC_SW_MUX_CTL_PAD_GPIO_AD_B0_13, kIOMUXC_SW_PAD_CTL_PAD_GPIO_AD_B0_13, MUX_ALT2, PAD_UART_RX);
 
     /* Deliberately NOT touched:
      *  - GPIO_AD_B0_04 / _05 (F11 BOOT_MODE0, G14 BOOT_MODE1): strap pins, never driven by firmware.
