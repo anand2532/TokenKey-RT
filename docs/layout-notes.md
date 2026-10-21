@@ -328,3 +328,6 @@ Silk pass: the reference designators were moved through the connector's move_foo
 
 ### 15.1 PSRAM is DNP and left unrouted (decided)
 U5 (APS6404L), R10, R11 and C50 are `dnp yes` in the schematic (U5's pinout and footprint are still unverified against the AP Memory datasheet). Their nets are deliberately left unrouted: PSRAM_CS, PSRAM_CLK, PSRAM_IO0–IO3, and the QSPIB_SCLK leg to R11. Any `unconnected_items` left in DRC at the end of #60 are DNP-only; DRC exclusion or "unconnected" reporting for them is handled at the end of #60. The M3 dog-bone site and the B.Cu corridor to U5 stay free of other routing.
+
+### 15.2 CC1 pad-pitch-limited breakout (PM-approved, #60)
+CC1 (J1 A5) cannot leave its pad 0.5 mm clear of the J1 USB pin field (B-row DN via-in-pad at 16.25/31.80, DP neck at x ≈ 16.05). `.kicad_dru` rule "J1 CC1 pad-pitch-limited breakout" drops the USB keep-away to 0.15 mm for CC1 copper that intersects the J1 courtyard only. CC1 route: A5 straight up to y 31.20, then 45° to R12 pad 1 (F.Cu, 0.15 mm, no vias). All other USB copper keeps 0.5 mm.
