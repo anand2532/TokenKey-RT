@@ -204,3 +204,9 @@ Example custom rule (`.kicad_dru`):
 | POFV at default via | $93.30 | Via covering $16.85 + plating method $3.34 + Kelvin + Tg155 |
 
 Conclusion: 0.15 vs 0.20 drill is effectively the same price tier (about $0.10 difference). The small-via option adds about $31 per prototype order. "Tented" is disabled once a stackup and impedance are specified; confirm via covering for BGA vias before release.
+
+## Update 2026-10-21 (TokenKey PM, issue #68)
+
+- **Via covering DECIDED:** stay on 4L JLC04161H-3313 with **board-wide Epoxy Filled & Capped (POFV)** vias. 4L POFV is a paid upcharge, indicative only; re-quote at order.
+- **Cost comparison only:** quote 6L JLC06161H-3313 (POFV free) at order time; **do not switch stacks mid-routing**, since that redoes the impedance work.
+- **Aspect ratio callout:** 1.6 / 0.15 ≈ **10.7:1**, within JLC's published capability (0.15/0.25 multilayer min via), above the 10:1 rule of thumb; watch it in JLC review.

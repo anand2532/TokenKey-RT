@@ -1,0 +1,2 @@
+Item,Designator,Qty,Description,MPN,LCSC Part #,Step,Notes
+knob,SW2-knob,1,"EC11 knob, ~17 mm dia x 16.5 mm high, 6 mm shaft, metal set-screw preferred",TBD,,3,"Per enclosure/cad/params.py KNOB_D/KNOB_H and enclosure/research.md; part not selected yet"
