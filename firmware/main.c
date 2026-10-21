@@ -95,6 +95,7 @@ void status_task(void *arg)
     uint32_t t = 0, pulse_ms = 0;
     TickType_t last = xTaskGetTickCount();
     TickType_t wd_last = last;
+    bool healthy_marked = false;
 
 #if TK_WATCHDOG
     board_wdog_start(WDOG_TIMEOUT_MS);
@@ -131,6 +132,12 @@ void status_task(void *arg)
 #if TK_WATCHDOG
                 board_wdog_feed();
 #endif
+                /* Healthy for TK_HEALTHY_UPTIME_MS with every check-in: clear the consecutive watchdog
+                 * reset counter so the next boot leaves safe mode (this boot stays as it started). */
+                if (!healthy_marked && (now * portTICK_PERIOD_MS) >= TK_HEALTHY_UPTIME_MS) {
+                    healthy_marked = true;
+                    board_boot_healthy();
+                }
             } else {
                 board_uart_puts("wdog: missing check-in ");
                 board_uart_puthex(~b & WD_BITS_ALL);

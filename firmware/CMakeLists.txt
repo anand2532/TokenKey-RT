@@ -37,9 +37,31 @@ set(TK_VERSION_DEFS
 # ---- host unit test (native compiler) ----------------------------------------------------
 if(NOT CMAKE_CROSSCOMPILING)
   enable_testing()
-  add_executable(test_proto test_proto.c proto.c)
-  target_compile_options(test_proto PRIVATE -Wall -Wextra -Werror)
+  option(TK_SANITIZE "Host tests with AddressSanitizer + UndefinedBehaviorSanitizer" OFF)
+  set(TK_CORE proto.c jobs.c engine.c xxh32.c)
+  set(TK_WARN -Wall -Wextra -Werror)
+  set(TK_SAN)
+  if(TK_SANITIZE)
+    set(TK_SAN -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
+  endif()
+  foreach(t test_proto test_engine)
+    add_executable(${t} ${t}.c ${TK_CORE})
+    target_compile_options(${t} PRIVATE ${TK_WARN} ${TK_SAN})
+    target_link_options(${t} PRIVATE ${TK_SAN})
+  endforeach()
   add_test(NAME proto COMMAND test_proto)
+  add_test(NAME engine COMMAND test_engine)
+  # Simulator library: the device protocol + job layer + engine for tools/tkhost.py --sim (ctypes).
+  # Never sanitized (it is loaded into the Python interpreter).
+  add_library(tksim SHARED tksim.c ${TK_CORE})
+  target_compile_options(tksim PRIVATE ${TK_WARN})
+  target_compile_definitions(tksim PRIVATE ${TK_VERSION_DEFS})
+  find_package(Python3 3.8 COMPONENTS Interpreter)
+  if(Python3_FOUND)
+    # tkhost end to end on the PoC golden corpus (tests/corpus): byte-exact outputs, metrics, CLI
+    add_test(NAME tkhost_corpus COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_corpus.py
+             $<TARGET_FILE:tksim>)
+  endif()
   return()
 endif()
 
@@ -60,7 +82,7 @@ set(TUSB ${TP}/tinyusb/src)
 set(RTOS ${TP}/freertos)
 
 set(APP_SOURCES
-  startup.c boot_hdr.c board.c main.c usb_vendor.c proto.c oled.c ui.c input.c)
+  startup.c boot_hdr.c board.c main.c usb_vendor.c proto.c jobs.c engine.c xxh32.c oled.c ui.c input.c)
 
 set(THIRD_PARTY_SOURCES
   ${TUSB}/tusb.c

@@ -1,5 +1,5 @@
 /*
- * TokenKey RT - USB frame protocol (firmware/docs/usb_protocol.md, draft v0.2)
+ * TokenKey RT - USB frame protocol (firmware/docs/usb_protocol.md, v1.0)
  *
  *   | 0xA5 | ver u8 | cmd u8 | seq u8 | len u16 LE | payload[len] | crc u16 LE |
  *   CRC-16/CCITT-FALSE (poly 0x1021, init 0xFFFF, no reflection, xorout 0) over ver..payload.
@@ -16,7 +16,7 @@
 
 #define PROTO_SOF          0xA5u
 #define PROTO_VERSION      1u /* major: frame `ver` byte */
-#define PROTO_VERSION_MINOR 2u /* minor: reported in HELLO (v0.2: sessions/delta/spans/policy) */
+#define PROTO_VERSION_MINOR 3u /* minor: reported in HELLO (2 = v0.2 data model, 3 = v1.0 wire: message table, keep/drop records) */
 #define PROTO_MAX_PAYLOAD  4096u
 #define PROTO_OVERHEAD     8u /* SOF + ver + cmd + seq + len16 + crc16 */
 #define PROTO_MAX_FRAME    (PROTO_MAX_PAYLOAD + PROTO_OVERHEAD)
@@ -46,7 +46,12 @@ enum {
 /* GET_INFO TLV types */
 enum { TLV_SERIAL = 0x01, TLV_BUILD_ID = 0x02, TLV_FLASH_SIZE = 0x03, TLV_UPTIME_MS = 0x04 };
 
-typedef enum { MODE_ECONOMY = 0, MODE_BALANCED = 1, MODE_QUALITY = 2, MODE_COUNT } tk_mode_t;
+/* Reduction presets (SET_MODE / policy preset). S-protect is the v1.0 default; Economy,
+ * Balanced and Quality are explicit opt-in keep ratios for OLDER tool output only. */
+typedef enum {
+    MODE_ECONOMY = 0, MODE_BALANCED = 1, MODE_QUALITY = 2, MODE_S_PROTECT = 3, MODE_DEDUP_ONLY = 4, MODE_COUNT
+} tk_mode_t;
+#define MODE_DEFAULT MODE_S_PROTECT
 
 uint16_t proto_crc16(const uint8_t *data, size_t len);
 uint16_t proto_crc16_update(uint16_t crc, const uint8_t *data, size_t len);
@@ -96,27 +101,35 @@ typedef struct {
     uint32_t uptime_ms;    /* refreshed by the caller before dispatch */
     uint32_t caps;
     bool mode_changed;     /* set by dispatch when SET_MODE changed the mode */
+    struct tk_jobs *jobs;  /* v0.2 job engine (jobs.h); NULL = JOB, POLICY and STATS commands not implemented */
+    bool safe_mode;        /* watchdog safe mode: JOB_* and SET_POLICY answer ERR_SAFE_MODE */
 } proto_device_t;
 
 #define PROTO_CAP_EVENTS    0x00000001u /* bit0: unsolicited EVT_* frames */
 #define PROTO_CAP_XXH64     0x00000002u /* bit1: reserved (xxh64 hashes) */
 #define PROTO_CAP_MULTI_JOB 0x00000004u /* bit2: reserved (more than one active job) */
 #define PROTO_CAP_SESSIONS  0x00000008u /* bit3: v0.2 sessions, DELTA jobs, protected spans,
-                                         * SET/GET_POLICY, JOB_END v0.2 result. Set only once
-                                         * the handlers are implemented (not yet). */
+                                         * SET/GET_POLICY, JOB_END v0.2 result. Added to the
+                                         * HELLO caps by proto_handle when dev->jobs is set
+                                         * and the device is not in safe mode. */
 
 /* ---- v0.2 data model: sessions, delta jobs, protected spans ------------------------------ */
 #define JOB_FLAG_DIFF_AWARE   0x01u /* v0.1 bit0 */
 #define JOB_FLAG_FULL         0x02u /* 1 = FULL request (resets the session); 0 = DELTA (default) */
+#define JOB_FLAG_MESSAGES     0x04u /* v1.0: a message table follows the spans in JOB_BEGIN */
+/* Message roles (usb_protocol.md 8.5) */
+enum { ROLE_SYSTEM = 0, ROLE_USER = 1, ROLE_ASSISTANT = 2, ROLE_TOOL = 3, ROLE_COUNT };
 #define PROTO_SESSION_NONE    0u    /* session_id 0 = stateless, FULL implied */
 #define PROTO_MAX_SPANS       16u   /* protected spans per JOB_BEGIN */
 #define PROTO_MAX_SESSIONS    4u    /* device-side session slots (LRU) */
 #define JOB_BEGIN_V01_LEN     11u   /* job_id u16, total_len u32, flags u8, token_budget u32 */
 #define JOB_BEGIN_V02_LEN     24u   /* + session_id u32, prefix_len u32, prefix_xxh u32, span_count u8 */
 #define JOB_SPAN_WIRE_LEN     9u    /* offset u32, len u32, kind u8 */
+#define PROTO_MAX_MSGS        256u  /* v1.0 message table entries per JOB_BEGIN (PoC max 114) */
+#define JOB_MSG_WIRE_LEN      6u    /* len u32, role u8, flags u8 */
 
-/* Span kinds (usb_protocol.md 8.3). 4..255 are reserved for future minors and rejected
- * (BAD_PARAM) by this version. Persistence: TASK, OTHER and SYSTEM_PROMPT spans stay
+/* Span kinds (usb_protocol.md 8.3). 5..255 are reserved for future minors and rejected
+ * (BAD_PARAM) by this version (4 = ERROR since v1.0). Persistence: TASK, OTHER and SYSTEM_PROMPT spans stay
  * protected for the whole session; LATEST_TOOL_OUTPUT only in the job that declares it.
  * SYSTEM_PROMPT may only be declared in a FULL job. */
 typedef enum {
@@ -124,6 +137,7 @@ typedef enum {
     SPAN_LATEST_TOOL_OUTPUT = 1,
     SPAN_OTHER = 2,
     SPAN_SYSTEM_PROMPT = 3,
+    SPAN_ERROR = 4, /* v1.0: host-declared error text; protected in the declaring job only */
     SPAN_KIND_COUNT
 } proto_span_kind_t;
 #define PROTO_SPAN_KIND_PERSISTS(k) ((k) == SPAN_TASK || (k) == SPAN_OTHER || (k) == SPAN_SYSTEM_PROMPT)
@@ -145,16 +159,25 @@ typedef struct {
     uint8_t span_count;
     proto_span_t spans[PROTO_MAX_SPANS];
     bool v02;            /* v0.2 fields were present */
+    bool has_msgs;       /* v1.0 message table present (after the spans) */
+    uint16_t msg_count;
+    struct {
+        uint32_t len;    /* content bytes of the message; sum == total_len */
+        uint8_t role;    /* ROLE_* (informational; protection comes from flags) */
+        uint8_t flags;   /* MSGF_* (engine.h): EXEMPT, NEWEST */
+    } msgs[PROTO_MAX_MSGS];
 } proto_job_begin_t;
 
 /* ERROR detail for SESSION_MISMATCH: host must resend the job with JOB_FLAG_FULL. */
-enum { SESS_MM_UNKNOWN = 1, SESS_MM_PREFIX_LEN = 2, SESS_MM_PREFIX_XXH = 3, SESS_MM_EVICTED = 4 };
+enum { SESS_MM_UNKNOWN = 1, SESS_MM_PREFIX_LEN = 2, SESS_MM_PREFIX_XXH = 3, SESS_MM_EVICTED = 4, SESS_MM_EXPIRED = 5 };
 /* ERROR detail for BAD_PARAM from JOB_BEGIN parsing */
 enum {
     JB_DETAIL_SHORT = 1,          /* neither v0.1 (11 B) nor >= v0.2 (24 B + spans) */
     JB_DETAIL_DELTA_NO_SESSION,   /* DELTA requested with session_id 0 */
     JB_DETAIL_FULL_WITH_PREFIX,   /* FULL with non-zero prefix_len/prefix_xxh */
     JB_DETAIL_SPANS_TRUNCATED,    /* span_count larger than the payload */
+    JB_DETAIL_MSGS_TRUNCATED,     /* v1.0 message table shorter than msg_count */
+    JB_DETAIL_MSG_SUM,            /* v1.0 message lengths do not add up to total_len */
     JB_DETAIL_SPAN_BASE = 0x100,  /* | span index: zero len, out of range, overlap/unsorted, bad kind */
     JB_DETAIL_SYSPROMPT_DELTA = 0x200, /* | span index: SYSTEM_PROMPT declared in a DELTA job */
 };
@@ -211,35 +234,47 @@ void proto_session_commit_job(proto_session_t *s, uint32_t job_len, uint32_t new
  * spans of the job in progress)? Returns the kind of the first hit, or -1. */
 int proto_session_protected_kind(const proto_session_t *s, uint32_t offset, uint32_t len);
 
-/* JOB_END response (v0.2 appends everything after est_tokens_in). */
+/* JOB_END response, v1.0 (usb_protocol.md 8.6). The reduced output is not sent back as
+ * bytes: RESULT_READ returns one TK_SEG_RECORD_LEN record per segment (keep/drop list). */
+enum { JOB_STATUS_DONE = 0, JOB_STATUS_NEED_PASS2 = 1, JOB_STATUS_OVERFLOW = 2 };
 typedef struct {
     uint16_t job_id;
-    uint32_t est_tokens_in;
-    uint32_t est_tokens_out;
-    uint32_t out_len;          /* length of the full reduced session output (RESULT_READ space) */
-    uint32_t cache_stable_len; /* leading output bytes identical to the previous result of
-                                * this session (0 for FULL / stateless) */
-    uint32_t cache_stable_xxh; /* xxh32 (seed 0) of those bytes */
-    uint32_t protected_bytes;  /* bytes passed through untouched because of protected spans */
+    uint8_t status;          /* JOB_STATUS_* */
+    uint32_t seg_count;      /* records available via RESULT_READ (0 unless DONE) */
+    uint32_t est_tokens_in;  /* job content bytes / 4 */
+    uint32_t est_tokens_out; /* sum over kept segments of len / 4 */
+    uint32_t kept_bytes;
+    uint32_t dup_hits;
+    uint32_t set_full;
 } proto_job_result_t;
 #define JOB_END_V01_LEN 6u
-#define JOB_END_V02_LEN 26u
+#define JOB_END_V10_LEN 27u
 size_t proto_put_job_result(uint8_t *out, size_t cap, const proto_job_result_t *r);
 uint8_t proto_parse_job_result(const uint8_t *p, uint16_t len, proto_job_result_t *r);
 
-/* ---- v0.2 reduction policy (SET_POLICY / GET_POLICY blob) ---------------------------------- */
+/* ---- reduction policy (SET_POLICY / GET_POLICY blob), v1.0 --------------------------------- */
 #define POLICY_VERSION          1u
-#define POLICY_PRESET_CUSTOM    0xFFu       /* SET: base on current policy; GET: matches no preset */
-#define POLICY_CACHE_PREFIX_ALL 0xFFFFFFFFu /* keep every already-sent output byte untouched */
+#define POLICY_PRESET_CUSTOM    0xFFu /* SET: base on current policy; GET: matches no preset */
 #define POLICY_BLOB_MAX         64u
-enum { SEG_TEXT = 0, SEG_CODE = 1, SEG_TOOL_OUTPUT = 2, SEG_LOG = 3, SEG_TYPE_COUNT };
+#define POLICY_TTL_NEVER        0u    /* ttl_s = 0: the session never expires (dedup-only) */
+/* Segment types of the context engine scanner (stats order). */
+enum { SEG_PROSE = 0, SEG_CODE = 1, SEG_DIFF = 2, SEG_LOG = 3, SEG_TYPE_COUNT };
+#define SEG_TEXT SEG_PROSE
 enum {
-    POL_TLV_BUDGET_PCT = 0x01,          /* u8 1..100 */
-    POL_TLV_DEDUP = 0x02,               /* u8 0/1 */
-    POL_TLV_CACHE_STABLE_PREFIX = 0x03, /* u32 bytes, POLICY_CACHE_PREFIX_ALL = all */
-    POL_TLV_TYPE_WEIGHT = 0x04,         /* {seg_type u8, weight u8 0..100}, repeatable */
-    POL_TLV_OPTIONAL = 0x80,            /* type bit7: receiver may ignore if unknown */
+    POLICY_RULES_V01 = 0,     /* v0.1: rank the whole job, keep_pct of all job tokens (PoC variant D) */
+    POLICY_RULES_SESSION = 1, /* v1.0 PM rules: exemptions, ratio on older tool output only (PoC variant S) */
 };
+enum {
+    POL_TLV_KEEP_PCT = 0x01,     /* u8 1..100: keep ratio (older tool output; whole job under RULES_V01) */
+    POL_TLV_DEDUP = 0x02,        /* u8 0/1: exact-duplicate segment removal */
+    /* 0x03 (v0.2 CACHE_STABLE_PREFIX) is withdrawn: the cached prefix is never rewritten */
+    POL_TLV_TYPE_WEIGHT = 0x04,  /* {seg_type u8, weight u16 LE 0..1000}, repeatable */
+    POL_TLV_NEWEST_DEDUP = 0x05, /* u8 0/1: 1 = newest message also subject to cross-message dedup */
+    POL_TLV_RULES = 0x06,        /* u8 POLICY_RULES_* */
+    POL_TLV_TTL_S = 0x07,        /* u32 seconds: session idle TTL (provider cache), 0 = never */
+    POL_TLV_OPTIONAL = 0x80,     /* type bit7: receiver may ignore if unknown */
+};
+#define POL_TLV_BUDGET_PCT POL_TLV_KEEP_PCT
 /* POLICY_INVALID detail: header problems < 0x100, TLV problems = reason << 8 | tlv type */
 enum {
     POL_DETAIL_VERSION = 0x01, POL_DETAIL_TRUNCATED = 0x02, POL_DETAIL_PRESET = 0x03,
@@ -247,12 +282,15 @@ enum {
 };
 
 typedef struct {
-    uint8_t preset;                      /* tk_mode_t or POLICY_PRESET_CUSTOM */
-    uint8_t budget_pct;
+    uint8_t preset;                       /* tk_mode_t or POLICY_PRESET_CUSTOM */
+    uint8_t keep_pct;                     /* 1..100 */
     bool dedup;
-    uint32_t cache_stable_prefix;
-    uint8_t type_weight[SEG_TYPE_COUNT]; /* keep priority, 0..100 */
+    bool newest_dedup;
+    uint8_t rules;                        /* POLICY_RULES_* */
+    uint32_t ttl_s;                       /* 0 = never expires */
+    uint16_t type_weight[SEG_TYPE_COUNT]; /* rank weight per segment type */
 } proto_policy_t;
+#define POLICY_BLOB_LEN 40u
 
 void proto_policy_preset(tk_mode_t m, proto_policy_t *pol);
 /* Parse a SET_POLICY blob on top of *cur (used when preset = CUSTOM). On success *out is the

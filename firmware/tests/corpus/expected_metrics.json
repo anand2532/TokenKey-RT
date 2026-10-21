@@ -1,0 +1,52 @@
+{
+ "D_firmware_as_written_economy": {
+  "err_full_newest_pct": 40.9091,
+  "err_recall_all": 50.8591,
+  "err_recall_newest": 52.7273,
+  "ref_full_pct": 72.549,
+  "ref_items": 158,
+  "ref_recall": 79.1139,
+  "requests_with_new_err": 22,
+  "requests_with_refs": 51
+ },
+ "G_dedup_only": {
+  "err_full_newest_pct": 100.0,
+  "err_recall_all": 100.0,
+  "err_recall_newest": 100.0,
+  "ref_full_pct": 100.0,
+  "ref_items": 158,
+  "ref_recall": 100.0,
+  "requests_with_new_err": 22,
+  "requests_with_refs": 51
+ },
+ "S_protect_balanced": {
+  "err_full_newest_pct": 100.0,
+  "err_recall_all": 91.9244,
+  "err_recall_newest": 100.0,
+  "ref_full_pct": 98.0392,
+  "ref_items": 158,
+  "ref_recall": 99.3671,
+  "requests_with_new_err": 22,
+  "requests_with_refs": 51
+ },
+ "S_protect_economy": {
+  "err_full_newest_pct": 100.0,
+  "err_recall_all": 91.9244,
+  "err_recall_newest": 100.0,
+  "ref_full_pct": 98.0392,
+  "ref_items": 158,
+  "ref_recall": 99.3671,
+  "requests_with_new_err": 22,
+  "requests_with_refs": 51
+ },
+ "S_protect_quality": {
+  "err_full_newest_pct": 100.0,
+  "err_recall_all": 99.4845,
+  "err_recall_newest": 100.0,
+  "ref_full_pct": 100.0,
+  "ref_items": 158,
+  "ref_recall": 100.0,
+  "requests_with_new_err": 22,
+  "requests_with_refs": 51
+ }
+}

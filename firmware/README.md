@@ -11,7 +11,7 @@ Status: **skeleton, builds cleanly, not yet run on hardware** (see [`docs/bringu
 
 | File | Contents |
 |---|---|
-| `CMakeLists.txt`, `arm-none-eabi.cmake`, `CMakePresets.json` | build (firmware with the toolchain file, host test without); presets `dvl6b`, `cvl5b`, `recovery-1pad`, `host` |
+| `CMakeLists.txt`, `arm-none-eabi.cmake`, `CMakePresets.json` | build (firmware with the toolchain file, host tests without); presets `dvl6b`, `cvl5b`, `recovery-1pad`, `host`, `host-asan` |
 | `MIMXRT1062_flexspi.ld` | XIP linker script: FCB @0x6000_0000, IVT/boot data @0x6000_1000, code @0x6000_2000, DTCM data/stacks |
 | `boot_hdr.c` | FlexSPI NOR config block (W25Q64, quad 1-4-4 0xEB with mode byte 0xFF, 50 MHz SDR, **DQS-pad loopback** (N3 floating); `TK_FCB_SINGLE_PAD` recovery variant 1-1-1 0x0B), IVT, boot data |
 | `startup.c` | vector table, `Reset_Handler` (FlexRAM ITCM 128K / DTCM 256K / OCRAM 128K), WDOG1/2 + RTWDOG off, .data/.bss, FPU, MPU, I/D cache, fault dump on LPUART1 |
@@ -19,10 +19,16 @@ Status: **skeleton, builds cleanly, not yet run on hardware** (see [`docs/bringu
 | `main.c` | static queues/event group/tasks; `status_task` is the LED + watchdog task |
 | `FreeRTOSConfig.h` | kernel config (static allocation only, IRQ priority split) |
 | `usb_vendor.c`, `tusb_config.h` | USB PHY/clock init, descriptors, `usb_task` |
-| `proto.c/.h` | frame CRC/builder/parser/dispatcher (pure C, host-tested) |
+| `proto.c/.h` | frame CRC/builder/parser/dispatcher, JOB_BEGIN/policy/result codecs (pure C, host-tested) |
+| `jobs.c/.h` | v1.0 job layer: sessions (FULL/DELTA, LRU, TTL), JOB_* state machine incl. pass 2, policy, stats |
+| `engine.c/.h`, `xxh32.c/.h` | context engine: byte-exact port of the TokenKey PoC rules with bounded state ([docs/engine.md](docs/engine.md)) |
+| `tksim.c` | host simulator library (`libtksim.so`): the same proto/jobs/engine code behind a ctypes API |
 | `oled.c/.h`, `ui.c` | LPI2C1 + SSD1315 driver, 1 KB framebuffer, 5x7 font; `ui_task` screens |
 | `input.c` | GPIO1 ISR + `input_task` (quadrature table, debounce, long press) |
-| `test_proto.c` | host unit test: CRC-16 check 0x29B1, parser resync, BAD_CRC/BAD_LEN/BAD_VERSION, commands, v0.2 JOB_BEGIN/spans, JOB_END result, policy TLVs |
+| `test_proto.c` | host unit test: CRC-16 check 0x29B1, parser resync, BAD_CRC/BAD_LEN/BAD_VERSION, commands, JOB_BEGIN/spans/message table, JOB_END v1.0 result, policy TLVs, safe mode |
+| `test_engine.c` | host unit test: scanner, dupset, scoring/greedy, overflow, pass 2, rollback, sessions |
+| `tools/tkhost.py` | host CLI + reference client (`--sim` simulator or USB via pyusb): hello/ping/info/mode/policy/run/stats/corpus |
+| `tests/test_corpus.py`, `tests/corpus/` | PoC golden corpus replay through tkhost + simulator (byte-exact digests and metrics) |
 | `tools/w25q_status.py` | pyOCD script: read W25Q64 SR1/SR2/SR3 over SWD, check/set QE |
 | `docs/bringup_checklist.md` | bring-up steps, QE check, blhost recovery commands with NXP sources |
 | `third_party/` | minimal vendored CMSIS core, MIMXRT1062 device headers, TinyUSB 0.20.0, FreeRTOS-Kernel V11.1.0 ([manifest + licenses](third_party/README.md)) |
@@ -47,9 +53,15 @@ cmake -S . -B build-ninja -G Ninja -DCMAKE_TOOLCHAIN_FILE=arm-none-eabi.cmake
 # presets (Unix Makefiles): dvl6b, cvl5b, recovery-1pad, host (+ dvl6b-ninja)
 cmake --preset cvl5b && cmake --build --preset cvl5b          # -> build-cvl5b/
 
-# host unit test
-cmake -S . -B build-host && cmake --build build-host && ctest --test-dir build-host
-# or: cmake --preset host && cmake --build --preset host && ctest --preset host
+# host tests: test_proto, test_engine, tkhost_corpus (needs python3 >= 3.8; xxhash optional)
+cmake --preset host && cmake --build --preset host && ctest --preset host
+# same with AddressSanitizer + UBSan on the C tests
+cmake --preset host-asan && cmake --build --preset host-asan && ctest --preset host-asan
+
+# simulator / device CLI
+python3 tools/tkhost.py --sim hello
+python3 tools/tkhost.py --sim corpus <dir>                 # replay a corpus dir (inputs/ [expected/]), e.g. the PoC handoff corpus
+python3 tools/tkhost.py run --variant s-protect req.json    # real device over USB (pyusb)
 ```
 
 Options: `-DTK_PART=DVL6B|CVL5B` (default DVL6B), `-DTK_WATCHDOG=OFF` (bench debugging),
@@ -120,9 +132,9 @@ firmware never drives GPIO_AD_B0_04/05 (BOOT_MODE0/1).
 
 | Task | Prio | Stack (words) | Does | Blocks on |
 |---|---|---|---|---|
-| `usb_task` | 4 | 1024 | `tud_task_ext()`, bulk OUT -> `proto_parser_feed()` -> `proto_handle()` -> bulk IN; sends EVT_MODE/EVT_BUTTON | TinyUSB event queue (20 ms) |
+| `usb_task` | 4 | 1024 | `tud_task_ext()`, bulk OUT -> `proto_parser_feed()` -> `proto_handle()` (-> `tk_jobs_handle()`) -> bulk IN; job idle timeout; sends EVT_MODE/EVT_BUTTON/EVT_PROGRESS, job progress to the UI | TinyUSB event queue (20 ms) |
 | `input_task` | 3 | 256 | encoder quadrature decode, 20 ms button debounce, 800 ms long press | `q_input_raw` (100 ms idle, 1 ms while active) |
-| `ui_task` | 2 | 512 | splash, mode screen, encoder/BTN mode selection | `q_ui` (100 ms) |
+| `ui_task` | 2 | 512 | splash, HOME/STATS/INFO/MODES screens, encoder/BTN mode selection, job cancel | `q_ui` (100 ms) |
 | `status_task` | 1 | 256 | **the LED + watchdog task**: LED_STAT patterns and the only RTWDOG feed | 20 ms period |
 | idle | 0 | 128 | kernel | - |
 
@@ -135,7 +147,7 @@ kernel at 15. All kernel objects are static (`configSUPPORT_DYNAMIC_ALLOCATION 0
         v
    q_input_raw --> [input_task] --tk_ui_msg(INPUT)--> q_ui --> [ui_task] --> OLED (LPI2C1)
                                                         ^          |
-          tk_ui_msg(MODE_FROM_HOST, USB_STATE)          |          | tk_usb_msg(MODE_FROM_DEVICE, BUTTON)
+     tk_ui_msg(MODE_FROM_HOST, USB_STATE, JOB)          |          | tk_usb_msg(MODE_FROM_DEVICE, BUTTON, CANCEL_JOB)
                                                         |          v
  USB OTG1 IRQ --> TinyUSB --> [usb_task] <-------------------- q_usb
                                   |  frames <-> host (bulk 0x01/0x81)
@@ -150,8 +162,21 @@ watchdog. Watchdog: `status_task` checks the event group every 500 ms and feeds 
 LPO, halted while a debugger holds the core) only if all three bits are set, then clears them.
 A stuck task stops the feed and the chip resets.
 
+**Reset cause and safe mode.** `board_init()` latches `SRC_SRSR` (then clears it), prints it on
+LPUART1 (`reset=watchdog srsr=… wdog_resets=…`) and shows it on the INFO screen. A counter of
+consecutive watchdog resets lives in SNVS `LPGPR[3]` (survives warm resets): any non-watchdog
+reset clears it, and so does 60 s of healthy uptime (all check-ins). At **3** consecutive
+watchdog resets the device boots in **safe mode**: HELLO/PING/INFO/mode still work, caps bit3 is
+cleared and JOB_*/SET_POLICY answer `ERROR SAFE_MODE`; the OLED shows a SAFE MODE banner.
+
+**Memory.** The job layer (5 session dupsets + engine tables, 313 KB) is in `.ocram_bss`
+(512 KB OCRAM2); DTCM holds .data/.bss (~37 KB) and the stacks.
+
 LED_STAT: off = not enumerated, on = enumerated, short inverted pulse = frame received.
-UI: rotate = highlight mode, ENC_SW = apply, BTN1 = next mode, BTN2 = cancel highlight.
+UI: rotate = next screen (HOME -> STATS -> INFO); on HOME, ENC_SW opens MODES (rotate =
+highlight, ENC_SW = apply); BTN1 = next mode on any screen; BTN2 = cancel the running job, else
+back to HOME. HOME shows the mode (default **S-protect**), last job savings and a progress bar;
+STATS the lifetime jobs/tokens/savings/dup hits; INFO fw, part, reset cause, watchdog count.
 Mode changes from the host (SET_MODE) show on the OLED; local changes go to the host as EVT_MODE (0x62).
 
 ## USB protocol (implemented subset)
@@ -161,13 +186,13 @@ to-do for replacing them is marked there, nowhere else). Interface class 0xFF, b
 Linux udev example: use the hex values of `TK_USB_VID`/`TK_USB_PID`:
 `SUBSYSTEM=="usb", ATTR{idVendor}=="<vid>", ATTR{idProduct}=="<pid>", MODE="0666"`.
 
-Protocol draft v0.2 (minor 2, [`docs/usb_protocol.md`](docs/usb_protocol.md)). Implemented: HELLO (16-byte reply, last byte = minor), PING (<= 64 B echo), GET_INFO (TLV serial/build id/flash
-size/uptime), SET_MODE, GET_MODE, ERROR replies (BAD_CRC, BAD_LEN, BAD_VERSION, BAD_PARAM,
-UNKNOWN_CMD), events EVT_BUTTON/EVT_MODE. JOB_*, SET_POLICY, GET_POLICY, GET_STATS, RESET_STATS and
-ENTER_BOOTLOADER return `ERROR UNKNOWN_CMD` with detail `0x0001` (not implemented yet). The v0.2
-data model (sessions, FULL/DELTA, protected spans incl. session-persistent SYSTEM_PROMPT, per-session span table, policy TLV blob, JOB_END cache-stable report)
-is in `proto.h` with parsers/encoders in `proto.c`, host-tested; caps bit3 (`PROTO_CAP_SESSIONS`)
-stays clear until the handlers exist.
+Protocol **v1.0** (minor 3, [`docs/usb_protocol.md`](docs/usb_protocol.md)). Implemented: HELLO,
+PING, GET_INFO, SET/GET_MODE (5 modes), SET/GET_POLICY, JOB_BEGIN/DATA/END/ABORT with sessions,
+FULL/DELTA, protected spans (incl. ERROR), the per-message table and pass 2, RESULT_READ
+(keep/drop records), GET_STATS/RESET_STATS, events EVT_PROGRESS/EVT_BUTTON/EVT_MODE; caps bit3
+`PROTO_CAP_SESSIONS` is set (cleared in safe mode). ENTER_BOOTLOADER is **not implemented**
+(`ERROR UNKNOWN_CMD`, detail 1); use SW1 + the ROM serial downloader. Engine rules and bounds:
+[`docs/engine.md`](docs/engine.md).
 
 ## Bring-up checklist
 

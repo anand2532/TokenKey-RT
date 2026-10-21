@@ -15,6 +15,8 @@
     { "name": "recovery-1pad", "inherits": "fw-base", "binaryDir": "${sourceDir}/build-recovery",
       "cacheVariables": { "TK_PART": "CVL5B", "TK_FCB_SINGLE_PAD": "ON" } },
     { "name": "host", "generator": "Unix Makefiles", "binaryDir": "${sourceDir}/build-host" },
+    { "name": "host-asan", "generator": "Unix Makefiles", "binaryDir": "${sourceDir}/build-host-asan",
+      "cacheVariables": { "TK_SANITIZE": "ON" } },
     { "name": "dvl6b-ninja", "inherits": "dvl6b", "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-dvl6b-ninja" }
   ],
@@ -23,9 +25,11 @@
     { "name": "cvl5b", "configurePreset": "cvl5b" },
     { "name": "recovery-1pad", "configurePreset": "recovery-1pad" },
     { "name": "host", "configurePreset": "host" },
+    { "name": "host-asan", "configurePreset": "host-asan" },
     { "name": "dvl6b-ninja", "configurePreset": "dvl6b-ninja" }
   ],
   "testPresets": [
-    { "name": "host", "configurePreset": "host", "output": { "outputOnFailure": true } }
+    { "name": "host", "configurePreset": "host", "output": { "outputOnFailure": true } },
+    { "name": "host-asan", "configurePreset": "host-asan", "output": { "outputOnFailure": true } }
   ]
 }

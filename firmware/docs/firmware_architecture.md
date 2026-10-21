@@ -46,17 +46,14 @@ Rules: core has no hardware includes; static allocation only (no malloc/new, `-W
 - **UART log**: LPUART1 115200 8N1, 2 KB TX ring, non-blocking, drops on full.
 
 ### 2.3 Core: context processing
-- **Ring buffers**: SPSC lock-free, power-of-2 size; USB RX ring 32 KB, chunk records 16 KB metadata.
-- **Streaming xxHash**: XXH32 (Cortex-M7 friendly) per chunk/line, streaming state 48 B; XXH64 optional.
-- **Dup hash set**: open addressing, linear probe, fixed 8192 slots × 8 B (hash32 + chunk id), load cap 75%; when full, further items are not deduped (counted in stats), never evicted mid-session.
-- **Classification**: line-oriented scanner: detects `diff --git`/`+++`/`---` headers (changed-file IDs), fenced code blocks (``` / ~~~ with info string), prose, logs. Each segment → {type, file_id, offset, len, hash, score}.
-- **Ranking**: score = type weight (changed-file > fenced code > error log > prose) + recency + reference count − dup penalty; integer math only.
-- **Budget**: mode sets keep ratio of input tokens: Economy 25%, Balanced 50%, Quality 85%. Token estimate = bytes/4 (configurable). Greedy select by score/size until budget; output keeps original order.
-- **Stats**: bytes in/out, est. tokens in/out, dup hits, segments by type, set-full drops, time per job (DWT cycle counter).
-- Max segments per job: 4096 (fixed array). Exceeding → error CTX_OVERFLOW.
+> v1.0: implemented as `engine.c` / `jobs.c` / `xxh32.c`, a byte-exact port of the TokenKey PoC
+> rules. The draft bullets below were superseded; see [engine.md](engine.md) (rules, bounded
+> design, memory) and [usb_protocol.md](usb_protocol.md) §8–9 (sessions, message table, pass 2,
+> keep/drop records, policy). Content is streamed and not buffered on the device; the host
+> assembles the output from per-segment records.
 
 ### 2.4 UI
-Home (mode + last savings %), Mode select (encoder rotate, SW confirm), Stats, Device info (part, MHz, fw ver). BTN1 = cycle mode, BTN2 = back/cancel job. LED: off idle, solid connected, blink busy, fast blink fault.
+Implemented (v1.0, `ui.c`): HOME (mode, last savings %, job progress, SAFE MODE banner), STATS, INFO (fw, part/MHz, reset cause, watchdog count), MODES (encoder rotate, SW confirm). Encoder rotates screens, BTN1 = cycle mode, BTN2 = cancel job / back. LED: off = not enumerated, on = enumerated, pulse = traffic.
 
 ## 3. Memory map
 | Region | Size | Use |
@@ -83,9 +80,9 @@ Main loop: proto_poll → ctx_step (bounded slices ≤ 2 ms) → ui_step → ole
 ## 5. Boot / recovery flow
 1. ROM boots FlexSPI A (BOOT_CFG fuses / pins), reads FCB+IVT, XIP.
 2. Reset handler: disable WDOG1/2, config RTWDOG 2 s, FlexRAM, MPU/cache.
-3. Detect part → clock init (528/600). Log reset cause (SRC_SRSR): if RTWDOG reset count ≥ 3 in a row (counter in SNVS GPR) → safe mode (no ctx engine, USB recovery only).
+3. Log reset cause (SRC_SRSR, cleared after reading); consecutive watchdog-reset counter in SNVS LPGPR[3]: ≥ 3 → safe mode (no jobs; HELLO/PING/INFO/mode only; cleared by a non-watchdog reset or 60 s healthy uptime). Detect part → clock init (528/600). (Implemented, v1.0.)
 4. Init UART, OLED (splash), input, USB.
-5. Recovery: hold BTN1+BTN2 at power-on → safe mode; firmware update via USB uses ROM Serial Downloader (BOOT_MODE=01 via boot button, see 5.1) or in-app updater writing slot B + CRC check + swap flag. Last-resort: SWD.
+5. Recovery: (not implemented: hold BTN1+BTN2 at power-on → safe mode); firmware update via USB uses ROM Serial Downloader (BOOT_MODE=01 via boot button, see 5.1) or in-app updater writing slot B + CRC check + swap flag. Last-resort: SWD.
 
 ### 5.1 Boot strap circuit (final, from TokenKey Schematic)
 BOOT_MODE1 = GPIO_AD_B0_05 (G14): 10k pull-up, button to GND. BOOT_MODE0 = GPIO_AD_B0_04 (F11): 10k pull-down, driven high via P-MOSFET + 1k while button held. Released = 10 (FlexSPI boot); held = 01 (serial downloader). Enter SDP: hold button, pulse reset. Firmware must leave AD_B0_04/05 as inputs or unused and never drive them. Factory policy: never blow BT_FUSE_SEL.

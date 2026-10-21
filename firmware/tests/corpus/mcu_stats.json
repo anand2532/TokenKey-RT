@@ -1,0 +1,51 @@
+{
+ "corpus": {
+  "sessions": 40,
+  "requests": 1019,
+  "max_message_bytes": 22871,
+  "max_request_bytes": 153613,
+  "max_line_bytes": 663,
+  "max_messages_per_request": 114
+ },
+ "D_firmware_as_written_economy": {
+  "jobs": 1019,
+  "max_segments_per_job": 348,
+  "max_job_bytes": 153613,
+  "max_segment_bytes": 9331,
+  "max_dupset_entries": 255,
+  "set_full_events": 0
+ },
+ "S_protect_economy": {
+  "jobs": 1019,
+  "max_segments_per_job": 272,
+  "max_job_bytes": 127092,
+  "max_segment_bytes": 9331,
+  "max_dupset_entries": 255,
+  "set_full_events": 0
+ },
+ "S_protect_balanced": {
+  "jobs": 1019,
+  "max_segments_per_job": 272,
+  "max_job_bytes": 127092,
+  "max_segment_bytes": 9331,
+  "max_dupset_entries": 255,
+  "set_full_events": 0
+ },
+ "S_protect_quality": {
+  "jobs": 1019,
+  "max_segments_per_job": 272,
+  "max_job_bytes": 127092,
+  "max_segment_bytes": 9331,
+  "max_dupset_entries": 255,
+  "set_full_events": 0
+ },
+ "G_dedup_only": {
+  "jobs": 1019,
+  "max_segments_per_job": 56,
+  "max_job_bytes": 22970,
+  "max_segment_bytes": 9331,
+  "max_dupset_entries": 255,
+  "set_full_events": 0
+ },
+ "note": "set_full_events: none possible here because max_dupset_entries < 6144 (75 % of 8192); S/G dupsets are session-scoped (reset on cache lapse for S, never for G); D is job-scoped."
+}

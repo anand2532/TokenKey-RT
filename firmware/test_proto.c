@@ -38,16 +38,16 @@ static proto_parse_result_t feed(const uint8_t *b, size_t n, int *count)
 /* field-wise compares (structs have padding, so no memcmp) */
 static int pol_eq(const proto_policy_t *a, const proto_policy_t *b)
 {
-    return a->preset == b->preset && a->budget_pct == b->budget_pct && a->dedup == b->dedup &&
-           a->cache_stable_prefix == b->cache_stable_prefix &&
+    return a->preset == b->preset && a->keep_pct == b->keep_pct && a->dedup == b->dedup &&
+           a->newest_dedup == b->newest_dedup && a->rules == b->rules && a->ttl_s == b->ttl_s &&
            memcmp(a->type_weight, b->type_weight, sizeof a->type_weight) == 0;
 }
 
 static int res_eq(const proto_job_result_t *a, const proto_job_result_t *b)
 {
     return a->job_id == b->job_id && a->est_tokens_in == b->est_tokens_in && a->est_tokens_out == b->est_tokens_out &&
-           a->out_len == b->out_len && a->cache_stable_len == b->cache_stable_len &&
-           a->cache_stable_xxh == b->cache_stable_xxh && a->protected_bytes == b->protected_bytes;
+           a->status == b->status && a->seg_count == b->seg_count && a->kept_bytes == b->kept_bytes &&
+           a->dup_hits == b->dup_hits && a->set_full == b->set_full;
 }
 
 static proto_device_t dev(void)
@@ -86,7 +86,7 @@ int main(void)
     CHECK(o[6] == 1 && o[7] == 0x00 && o[8] == 0x01 && o[11] == 0); /* proto 1, fw 0.1.0, DVL6B */
     CHECK(o[12] == 0x58 && o[13] == 0x02);                           /* 600 MHz */
     CHECK(o[14] == 0x00 && o[15] == 0x10 && o[16] == 4);             /* 4096, window 4 */
-    CHECK(o[17] == PROTO_CAP_EVENTS && o[21] == PROTO_VERSION_MINOR); /* caps, minor 2 */
+    CHECK(o[17] == PROTO_CAP_EVENTS && o[21] == PROTO_VERSION_MINOR); /* caps, minor */
     /* reply itself must parse */
     proto_parser_init(&P);
     CHECK(feed(o, rn, NULL) == PARSE_FRAME && last.cmd == 0x81);
@@ -224,13 +224,13 @@ int main(void)
                               .spans = {{0, 200, SPAN_SYSTEM_PROMPT}, {200, 50, SPAN_TASK},
                                         {900, 100, SPAN_LATEST_TOOL_OUTPUT}}};
     jn = proto_put_job_begin(jbuf, sizeof jbuf, &full);
-    CHECK(SPAN_SYSTEM_PROMPT == 3 && SPAN_KIND_COUNT == 4);
+    CHECK(SPAN_SYSTEM_PROMPT == 3 && SPAN_ERROR == 4 && SPAN_KIND_COUNT == 5);
     CHECK(proto_parse_job_begin(jbuf, (uint16_t)jn, &jr, &det) == ERR_OK && jr.spans[0].kind == SPAN_SYSTEM_PROMPT);
     bad = jb; /* DELTA */
     bad.spans[0].kind = SPAN_SYSTEM_PROMPT;
     jn = proto_put_job_begin(jbuf, sizeof jbuf, &bad);
     CHECK(proto_parse_job_begin(jbuf, (uint16_t)jn, &jr, &det) == ERR_BAD_PARAM && det == (JB_DETAIL_SYSPROMPT_DELTA | 0));
-    for (unsigned k = 4; k < 256; k += 25) {
+    for (unsigned k = SPAN_KIND_COUNT; k < 256; k += 25) {
         bad = full;
         bad.spans[1].kind = (uint8_t)k;
         jn = proto_put_job_begin(jbuf, sizeof jbuf, &bad);
@@ -301,59 +301,86 @@ int main(void)
     many.prefix_len = 8000; many.prefix_xxh = 10; many.span_count = 1;
     CHECK(proto_session_begin_job(&S, &many, &det) == ERR_CTX_OVERFLOW && S.span_count == 32 && S.in_len == 8000);
 
-    /* 10. v0.2: JOB_END result with cache-stable prefix report */
-    proto_job_result_t res = {.job_id = 7, .est_tokens_in = 2500, .est_tokens_out = 1200, .out_len = 9000,
-                              .cache_stable_len = 8000, .cache_stable_xxh = 0xDEADBEEFu, .protected_bytes = 200};
+    /* 10. v1.0: JOB_END result (keep/drop list summary) */
+    proto_job_result_t res = {.job_id = 7, .status = JOB_STATUS_DONE, .seg_count = 348, .est_tokens_in = 2500,
+                              .est_tokens_out = 1200, .kept_bytes = 4800, .dup_hits = 12, .set_full = 1};
     proto_job_result_t rr;
-    uint8_t rbuf[JOB_END_V02_LEN];
-    CHECK(proto_put_job_result(rbuf, sizeof rbuf, &res) == JOB_END_V02_LEN);
-    CHECK(proto_parse_job_result(rbuf, JOB_END_V02_LEN, &rr) == ERR_OK && res_eq(&rr, &res));
-    CHECK(proto_parse_job_result(rbuf, JOB_END_V01_LEN, &rr) == ERR_OK && rr.est_tokens_in == 2500 &&
-          rr.cache_stable_len == 0);
+    uint8_t rbuf[JOB_END_V10_LEN];
+    CHECK(proto_put_job_result(rbuf, sizeof rbuf, &res) == JOB_END_V10_LEN);
+    CHECK(proto_parse_job_result(rbuf, JOB_END_V10_LEN, &rr) == ERR_OK && res_eq(&rr, &res));
+    CHECK(proto_parse_job_result(rbuf, JOB_END_V01_LEN, &rr) == ERR_OK && rr.job_id == 7 && rr.seg_count == 0);
     CHECK(proto_parse_job_result(rbuf, 5, &rr) == ERR_BAD_LEN);
 
-    /* 11. v0.2: policy presets, TLV parse/serialize, validation */
-    proto_policy_t pb, pq, pp;
+    /* 11. v1.0: policy presets, TLV parse/serialize, validation */
+    proto_policy_t pb, pq, pp, ps, pg;
     proto_policy_preset(MODE_BALANCED, &pb);
     proto_policy_preset(MODE_QUALITY, &pq);
-    CHECK(pb.budget_pct == 50 && pb.dedup && pb.cache_stable_prefix == POLICY_CACHE_PREFIX_ALL && pq.budget_pct == 85);
+    proto_policy_preset(MODE_DEFAULT, &ps);
+    proto_policy_preset(MODE_DEDUP_ONLY, &pg);
+    CHECK(pb.keep_pct == 50 && pb.dedup && !pb.newest_dedup && pb.rules == POLICY_RULES_SESSION && pb.ttl_s == 300 &&
+          pq.keep_pct == 85);
+    CHECK(ps.preset == MODE_S_PROTECT && ps.keep_pct == 100 && !ps.newest_dedup && ps.ttl_s == 300);
+    CHECK(pg.keep_pct == 100 && pg.newest_dedup && pg.ttl_s == POLICY_TTL_NEVER);
+    CHECK(ps.type_weight[SEG_DIFF] == 400 && ps.type_weight[SEG_CODE] == 300 && ps.type_weight[SEG_LOG] == 200 &&
+          ps.type_weight[SEG_PROSE] == 100);
     uint8_t blob[POLICY_BLOB_MAX];
     size_t bn = proto_policy_serialize(&pb, blob, sizeof blob);
-    CHECK(bn == 30 && blob[0] == POLICY_VERSION && blob[1] == MODE_BALANCED);
+    CHECK(bn == POLICY_BLOB_LEN && blob[0] == POLICY_VERSION && blob[1] == MODE_BALANCED);
     CHECK(proto_policy_parse(blob, (uint16_t)bn, &pq, &pp, &det) == ERR_OK && pol_eq(&pp, &pb));
     /* preset only = SET_MODE equivalent */
     uint8_t only_q[] = {POLICY_VERSION, MODE_QUALITY};
-    CHECK(proto_policy_parse(only_q, 2, &pb, &pp, &det) == ERR_OK && pp.preset == MODE_QUALITY && pp.budget_pct == 85);
-    /* custom on top of current: budget 40, dedup off, cache prefix 4096, CODE weight 90, unknown optional TLV */
-    uint8_t cust[] = {POLICY_VERSION, POLICY_PRESET_CUSTOM, POL_TLV_BUDGET_PCT, 1, 40, POL_TLV_DEDUP, 1, 0,
-                      POL_TLV_CACHE_STABLE_PREFIX, 4, 0x00, 0x10, 0x00, 0x00, POL_TLV_TYPE_WEIGHT, 2, SEG_CODE, 90,
-                      0x81, 3, 1, 2, 3};
+    CHECK(proto_policy_parse(only_q, 2, &pb, &pp, &det) == ERR_OK && pp.preset == MODE_QUALITY && pp.keep_pct == 85);
+    /* custom on top of current: D as written (rules v0.1, keep 25), dedup off, CODE weight 350, TTL 3600, unknown optional TLV */
+    uint8_t cust[] = {POLICY_VERSION, POLICY_PRESET_CUSTOM, POL_TLV_KEEP_PCT, 1, 25, POL_TLV_DEDUP, 1, 0,
+                      POL_TLV_RULES, 1, POLICY_RULES_V01, POL_TLV_TTL_S, 4, 0x10, 0x0E, 0, 0,
+                      POL_TLV_TYPE_WEIGHT, 3, SEG_CODE, 0x5E, 0x01, POL_TLV_NEWEST_DEDUP, 1, 1, 0x81, 3, 1, 2, 3};
     CHECK(proto_policy_parse(cust, sizeof cust, &pb, &pp, &det) == ERR_OK && pp.preset == POLICY_PRESET_CUSTOM &&
-          pp.budget_pct == 40 && !pp.dedup && pp.cache_stable_prefix == 4096 && pp.type_weight[SEG_CODE] == 90 &&
-          pp.type_weight[SEG_TEXT] == pb.type_weight[SEG_TEXT]);
+          pp.keep_pct == 25 && !pp.dedup && pp.rules == POLICY_RULES_V01 && pp.ttl_s == 3600 && pp.newest_dedup &&
+          pp.type_weight[SEG_CODE] == 350 && pp.type_weight[SEG_PROSE] == pb.type_weight[SEG_PROSE]);
     bn = proto_policy_serialize(&pp, blob, sizeof blob);
     CHECK(blob[1] == POLICY_PRESET_CUSTOM);
     proto_policy_t pp2;
     CHECK(proto_policy_parse(blob, (uint16_t)bn, &pq, &pp2, &det) == ERR_OK && pol_eq(&pp2, &pp));
     uint8_t badv[] = {2, 0};
     CHECK(proto_policy_parse(badv, 2, &pb, &pp, &det) == ERR_POLICY_INVALID && det == POL_DETAIL_VERSION);
-    uint8_t badp[] = {POLICY_VERSION, 3};
+    uint8_t badp[] = {POLICY_VERSION, MODE_COUNT};
     CHECK(proto_policy_parse(badp, 2, &pb, &pp, &det) == ERR_POLICY_INVALID && det == POL_DETAIL_PRESET);
-    uint8_t badb[] = {POLICY_VERSION, 0, POL_TLV_BUDGET_PCT, 1, 101};
+    uint8_t badb[] = {POLICY_VERSION, 0, POL_TLV_KEEP_PCT, 1, 101};
     CHECK(proto_policy_parse(badb, sizeof badb, &pb, &pp, &det) == ERR_POLICY_INVALID &&
-          det == (POL_DETAIL_BAD_VALUE | POL_TLV_BUDGET_PCT));
+          det == (POL_DETAIL_BAD_VALUE | POL_TLV_KEEP_PCT));
     uint8_t badl[] = {POLICY_VERSION, 0, POL_TLV_DEDUP, 2, 1, 1};
     CHECK(proto_policy_parse(badl, sizeof badl, &pb, &pp, &det) == ERR_POLICY_INVALID &&
           det == (POL_DETAIL_BAD_LEN | POL_TLV_DEDUP));
-    uint8_t badt[] = {POLICY_VERSION, 0, POL_TLV_CACHE_STABLE_PREFIX, 4, 0};
+    uint8_t badt[] = {POLICY_VERSION, 0, POL_TLV_TTL_S, 4, 0};
     CHECK(proto_policy_parse(badt, sizeof badt, &pb, &pp, &det) == ERR_POLICY_INVALID && det == POL_DETAIL_TRUNCATED);
-    uint8_t badu[] = {POLICY_VERSION, 0, 0x05, 0};
-    CHECK(proto_policy_parse(badu, sizeof badu, &pb, &pp, &det) == ERR_POLICY_INVALID && det == (POL_DETAIL_UNKNOWN | 5));
-    uint8_t badw[] = {POLICY_VERSION, 0, POL_TLV_TYPE_WEIGHT, 2, SEG_TYPE_COUNT, 10};
+    uint8_t badu[] = {POLICY_VERSION, 0, 0x03, 4, 0, 0, 0, 0}; /* withdrawn v0.2 CACHE_STABLE_PREFIX */
+    CHECK(proto_policy_parse(badu, sizeof badu, &pb, &pp, &det) == ERR_POLICY_INVALID && det == (POL_DETAIL_UNKNOWN | 3));
+    uint8_t badw[] = {POLICY_VERSION, 0, POL_TLV_TYPE_WEIGHT, 3, SEG_TYPE_COUNT, 10, 0};
     CHECK(proto_policy_parse(badw, sizeof badw, &pb, &pp, &det) == ERR_POLICY_INVALID &&
           det == (POL_DETAIL_BAD_VALUE | POL_TLV_TYPE_WEIGHT));
+    uint8_t badr[] = {POLICY_VERSION, 0, POL_TLV_RULES, 1, 2};
+    CHECK(proto_policy_parse(badr, sizeof badr, &pb, &pp, &det) == ERR_POLICY_INVALID &&
+          det == (POL_DETAIL_BAD_VALUE | POL_TLV_RULES));
 
-    /* 12. v0.2 commands are defined but not implemented in the skeleton */
+    /* 11b. v1.0 message table in JOB_BEGIN */
+    static proto_job_begin_t mj, mj2;
+    memset(&mj, 0, sizeof mj);
+    mj.job_id = 3; mj.total_len = 30; mj.flags = JOB_FLAG_FULL | JOB_FLAG_MESSAGES; mj.session_id = 5; mj.v02 = true;
+    mj.has_msgs = true; mj.msg_count = 3;
+    mj.msgs[0].len = 10; mj.msgs[0].role = ROLE_SYSTEM; mj.msgs[0].flags = 1;
+    mj.msgs[1].len = 15; mj.msgs[1].role = ROLE_USER; mj.msgs[1].flags = 1;
+    mj.msgs[2].len = 5; mj.msgs[2].role = ROLE_TOOL; mj.msgs[2].flags = 3;
+    uint8_t mb[256];
+    size_t ml = proto_put_job_begin(mb, sizeof mb, &mj);
+    CHECK(ml == JOB_BEGIN_V02_LEN + 2 + 3 * JOB_MSG_WIRE_LEN);
+    CHECK(proto_parse_job_begin(mb, (uint16_t)ml, &mj2, &det) == ERR_OK && mj2.has_msgs && mj2.msg_count == 3 &&
+          mj2.msgs[1].len == 15 && mj2.msgs[2].flags == 3 && mj2.msgs[0].role == ROLE_SYSTEM);
+    CHECK(proto_parse_job_begin(mb, (uint16_t)(ml - 1), &mj2, &det) == ERR_BAD_PARAM && det == JB_DETAIL_MSGS_TRUNCATED);
+    mj.msgs[2].len = 6;
+    ml = proto_put_job_begin(mb, sizeof mb, &mj);
+    CHECK(proto_parse_job_begin(mb, (uint16_t)ml, &mj2, &det) == ERR_BAD_PARAM && det == JB_DETAIL_MSG_SUM);
+
+    /* 12. without a job layer (dev.jobs == NULL) the v0.2 commands answer "not implemented" */
     n = proto_build(f, sizeof f, CMD_SET_POLICY, 12, only_q, 2);
     proto_parser_init(&P);
     feed(f, n, NULL);
