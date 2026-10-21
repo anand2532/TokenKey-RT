@@ -3,7 +3,7 @@
 MCU: **MIMXRT1062DVL6B** (196 MAPBGA, 10 x 10 mm, 0.65 mm pitch). Alternate **MIMXRT1062CVL5B** uses the identical ball map
 (IMXRT1060IEC Rev.3 Table 82/83 vs IMXRT1060CEC Rev.4 Table 82/83), but max 528 MHz and VDD_SOC_IN <= 1.26 V.
 
-Generated from `tools/gen.py` (same data as the schematic). Balls from IMXRT1060CEC Rev.4 Tables 82/83; all 196 balls accounted for.
+Frozen snapshot, originally generated from `tools/gen.py` (deprecated in #26). Update by hand when the schematic pin mux changes. Balls from IMXRT1060CEC Rev.4 Tables 82/83; all 196 balls accounted for.
 
 ## Signal assignments
 
