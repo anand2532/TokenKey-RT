@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+import sys
+if __name__ == '__main__':
+    sys.exit("tools/gen_pinmap.py is DEPRECATED (issue #26). It needs tools/netlist.json from the deprecated gen.py. "
+             "docs/pin-map.md is now a frozen snapshot; update it by hand alongside schematic pin-mux changes.")
 import json, os
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = HERE   # repo root (or draft root): first ancestor that contains hardware/schematic

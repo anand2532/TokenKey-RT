@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 """Generate TokenKey-RT hierarchical KiCad 9 schematic + project libs from one netlist description."""
+import sys
+if __name__ == '__main__':
+    sys.exit("tools/gen.py is DEPRECATED (issue #26). The KiCad schematic is now edited directly in KiCad; "
+             "re-running this generator would overwrite hand edits (e.g. L2 from #24, J2 header from #44). Do not run it.")
 import re, json, uuid, math, os
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = HERE   # repo root (or draft root): first ancestor that contains hardware/schematic
