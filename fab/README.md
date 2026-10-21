@@ -76,7 +76,10 @@ BGA via check at 0.65 mm pitch: hole-to-track (0.65 − 0.15)/2 − 0.05 = 0.200
 
 **Stay on 4-layer JLC04161H-3313 with board-wide Epoxy Filled & Capped (POFV) vias.**
 
-- [ ] **J1 (USB-C receptacle) via-in-pad (PR #76): J1 pads B6/B7 (B-row D+/D−) and their A-row mates A6/A7 each carry a 0.15/0.30 mm via inside the 0.30 × 1.45 mm SMD pad (USB_DP: A6, B6; USB_DN: A7, B7). These vias MUST be Epoxy Filled & Copper Capped (JLC 'Epoxy Filled & Capped' / POFV). The order must NOT drop or downgrade the POFV via-covering option** (not Tented, not Plugged, not untreated): open or plugged vias in these SMD pads wick solder and cause opens or voids on the USB pins.
+- [ ] **Via-in-pad, POFV mandatory. These SMD pads have vias inside them, so every one MUST be Epoxy Filled & Copper Capped (JLC 'Epoxy Filled & Capped' / POFV). The order must NOT drop or downgrade the POFV via-covering option (not Tented, not Plugged, not untreated). Open or plugged vias in SMD pads wick solder and cause opens or voids.**
+  - **USB (PR #76): J1 USB-C A6 USB_DP, B6 USB_DP, A7 USB_DN, B7 USB_DN (via 0.15/0.30 mm each)**
+  - **QSPI (PR #81): U1 MIMXRT1062DVL6B BGA ball L4 QSPIA_SCLK and P3 FLASH_IO0 (via 0.15/0.30 mm); R9 22R pad 1 QSPIA_SCLK (via 0.30/0.60 mm). No vias in the flash's own pads.**
+  - **Others: none (pcbnew scan of every SMD pad on main 2da0e44).**
 
 - Why: with a specified stackup + impedance control, JLC's form offers Plugged or Epoxy Filled & Capped, not Tented. JLC ink plugging needs ≥ 0.35 mm from mask openings ("vias with a distance less than 0.35mm from the pad cannot be plugged with ink. Such vias can be plugged with epoxy or copper"); our BGA dog-bone vias are ≈ 0.16 mm from the ball pads. Sources: https://jlcpcb.com/capabilities/pcb-capabilities (Plugged vias), https://jlcpcb.com/help/article/pcb-via-covering (updated 2026-09-09).
 - **Cost:** POFV is a paid option on 4 layers (JLC raised the 4L resin-fill price on 2026-08-06). The upcharge is **indicative only, not quoted for this config; re-quote at order time.**
@@ -114,7 +117,10 @@ Parts come from `out/<sha>/hand_assembly_bom.csv` (not the JLC BOM).
 - [ ] 4 layers, 1.6 mm, **JLC04161H-3313** specified, impedance control on (USB 90 Ω, 50 Ω SE, ±10%)
 - [ ] Min via 0.15/0.25 band selected (small-via surcharge accepted); **10.7:1 aspect ratio, watch JLC's EQ review**
 - [ ] Via covering **Epoxy Filled & Capped (POFV)**, board-wide; note the 4L upcharge
-- [ ] **J1 (USB-C receptacle) via-in-pad (PR #76): J1 pads B6/B7 (B-row D+/D−) and their A-row mates A6/A7 each carry a 0.15/0.30 mm via inside the 0.30 × 1.45 mm SMD pad (USB_DP: A6, B6; USB_DN: A7, B7). These vias MUST be Epoxy Filled & Copper Capped (JLC 'Epoxy Filled & Capped' / POFV). The order must NOT drop or downgrade the POFV via-covering option** (not Tented, not Plugged, not untreated): open or plugged vias in these SMD pads wick solder and cause opens or voids on the USB pins.
+- [ ] **Via-in-pad, POFV mandatory. These SMD pads have vias inside them, so every one MUST be Epoxy Filled & Copper Capped (JLC 'Epoxy Filled & Capped' / POFV). The order must NOT drop or downgrade the POFV via-covering option (not Tented, not Plugged, not untreated). Open or plugged vias in SMD pads wick solder and cause opens or voids.**
+  - **USB (PR #76): J1 USB-C A6 USB_DP, B6 USB_DP, A7 USB_DN, B7 USB_DN (via 0.15/0.30 mm each)**
+  - **QSPI (PR #81): U1 MIMXRT1062DVL6B BGA ball L4 QSPIA_SCLK and P3 FLASH_IO0 (via 0.15/0.30 mm); R9 22R pad 1 QSPIA_SCLK (via 0.30/0.60 mm). No vias in the flash's own pads.**
+  - **Others: none (pcbnew scan of every SMD pad on main 2da0e44).**
 - [ ] Cost comparison only: also quote 6L JLC06161H-3313 (free POFV); don't switch unless PM re-opens the stackup
 - [ ] ENIG, green/white, remove order number or specify position
 - [ ] Standard PCBA, both sides, X-ray of U1; upload the **panel** zip + panel BOM/CPL (102.1 × 96.1 mm, §9), or the single board with JLC panelization
