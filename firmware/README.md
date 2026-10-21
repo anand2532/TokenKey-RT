@@ -13,7 +13,7 @@ Status: **skeleton, builds cleanly, not yet run on hardware** (see [`docs/bringu
 |---|---|
 | `CMakeLists.txt`, `arm-none-eabi.cmake`, `CMakePresets.json` | build (firmware with the toolchain file, host test without); presets `dvl6b`, `cvl5b`, `recovery-1pad`, `host` |
 | `MIMXRT1062_flexspi.ld` | XIP linker script: FCB @0x6000_0000, IVT/boot data @0x6000_1000, code @0x6000_2000, DTCM data/stacks |
-| `boot_hdr.c` | FlexSPI NOR config block (W25Q64, quad 1-4-4 0xEB, 50 MHz SDR, **internal loopback** since DQS is NC; `TK_FCB_SINGLE_PAD` recovery variant 1-1-1 0x0B), IVT, boot data |
+| `boot_hdr.c` | FlexSPI NOR config block (W25Q64, quad 1-4-4 0xEB with mode byte 0xFF, 50 MHz SDR, **DQS-pad loopback** (N3 floating); `TK_FCB_SINGLE_PAD` recovery variant 1-1-1 0x0B), IVT, boot data |
 | `startup.c` | vector table, `Reset_Handler` (FlexRAM ITCM 128K / DTCM 256K / OCRAM 128K), WDOG1/2 + RTWDOG off, .data/.bss, FPU, MPU, I/D cache, fault dump on LPUART1 |
 | `board.c/.h` | clocks + DCDC (600/528 MHz), pin mux, LPUART1 log, LED, GPIO, OCOTP, RTWDOG |
 | `main.c` | static queues/event group/tasks; `status_task` is the LED + watchdog task |
@@ -209,5 +209,6 @@ checklist U2).
 
 - W25Q64JV quad read needs status register 2 `QE = 1` (bit 1). The `-IQ` parts ship with QE=1;
   check with `tools/w25q_status.py` and set it via the flashloader option word (checklist F2).
-- Internal loopback sampling limits the read clock. 50 MHz is a conservative choice; 60 MHz is the
-  usual ceiling.
+- Read sampling uses loopback from the floating DQS pad (N3), which supports up to 133 MHz SDR; the
+  FCB boots at a conservative 50 MHz (Teensy 4.1 runs the same flash at 100 MHz this way).
+- Pin mux vs. schematic: [`docs/pinmux.md`](docs/pinmux.md).
