@@ -207,7 +207,10 @@ Conclusion: 0.15 vs 0.20 drill is effectively the same price tier (about $0.10 d
 
 ## Update 2026-10-21 (TokenKey PM, issue #68)
 
-- [ ] **J1 (USB-C receptacle) via-in-pad (PR #76): J1 pads B6/B7 (B-row D+/D−) and their A-row mates A6/A7 each carry a 0.15/0.30 mm via inside the 0.30 × 1.45 mm SMD pad (USB_DP: A6, B6; USB_DN: A7, B7). These vias MUST be Epoxy Filled & Copper Capped (JLC 'Epoxy Filled & Capped' / POFV). The order must NOT drop or downgrade the POFV via-covering option** (not Tented, not Plugged, not untreated): open or plugged vias in these SMD pads wick solder and cause opens or voids on the USB pins.
+- [ ] **Via-in-pad, POFV mandatory. These SMD pads have vias inside them, so every one MUST be Epoxy Filled & Copper Capped (JLC 'Epoxy Filled & Capped' / POFV). The order must NOT drop or downgrade the POFV via-covering option (not Tented, not Plugged, not untreated). Open or plugged vias in SMD pads wick solder and cause opens or voids.**
+  - **USB (PR #76): J1 USB-C A6 USB_DP, B6 USB_DP, A7 USB_DN, B7 USB_DN (via 0.15/0.30 mm each)**
+  - **QSPI (PR #81): U1 MIMXRT1062DVL6B BGA ball L4 QSPIA_SCLK and P3 FLASH_IO0 (via 0.15/0.30 mm); R9 22R pad 1 QSPIA_SCLK (via 0.30/0.60 mm). No vias in the flash's own pads.**
+  - **Others: none (pcbnew scan of every SMD pad on main 2da0e44).**
 - **Via covering DECIDED:** stay on 4L JLC04161H-3313 with **board-wide Epoxy Filled & Capped (POFV)** vias. 4L POFV is a paid upcharge, indicative only; re-quote at order.
 - **Cost comparison only:** quote 6L JLC06161H-3313 (POFV free) at order time; **do not switch stacks mid-routing**, since that redoes the impedance work.
 - **Aspect ratio callout:** 1.6 / 0.15 ≈ **10.7:1**, within JLC's published capability (0.15/0.25 multilayer min via), above the 10:1 rule of thumb; watch it in JLC review.
