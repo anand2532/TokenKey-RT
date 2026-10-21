@@ -67,6 +67,27 @@ uint64_t board_unique_id(void);
 void board_wdog_start(uint32_t timeout_ms);
 void board_wdog_feed(void);
 
+/* Reset cause + watchdog safe mode (docs/firmware_architecture.md "Watchdog and safe mode").
+ * board_init() latches SRC->SRSR (then clears it) and keeps a consecutive-watchdog-reset counter in
+ * SNVS LPGPR3 (survives warm resets, lost on POR). >= TK_SAFE_MODE_WDOG_RESETS consecutive
+ * RTWDOG/WDOG1 resets -> safe mode: USB HELLO/PING/INFO/mode only, no compression jobs. */
+#define TK_SAFE_MODE_WDOG_RESETS 3u
+#define TK_HEALTHY_UPTIME_MS     60000u /* then the counter is cleared */
+typedef enum {
+    TK_RESET_POR = 0, TK_RESET_PIN, TK_RESET_WDOG, TK_RESET_SYSRESET, TK_RESET_JTAG, TK_RESET_TEMP,
+    TK_RESET_OTHER,
+} tk_reset_cause_t;
+typedef struct {
+    uint32_t srsr;          /* raw SRC_SRSR at boot */
+    tk_reset_cause_t cause;
+    uint8_t wdog_count;     /* consecutive watchdog resets including this boot */
+    bool safe_mode;
+} tk_boot_info_t;
+const tk_boot_info_t *board_boot_info(void);
+const char *board_reset_cause_name(tk_reset_cause_t c);
+void board_boot_healthy(void); /* clear the consecutive-watchdog counter */
+uint32_t board_cycles(void); /* DWT CYCCNT (enabled in board_init) */
+
 /* Busy-wait delay; only valid before the scheduler starts or in fault handlers. */
 void board_delay_us(uint32_t us);
 

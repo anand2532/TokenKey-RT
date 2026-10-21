@@ -15,6 +15,7 @@
 #include "app.h"
 #include "board.h"
 #include "fsl_device_registers.h"
+#include "jobs.h"
 #include "proto.h"
 #include "tusb.h"
 
@@ -180,6 +181,14 @@ static uint8_t s_rx[512];
 static uint8_t s_tx[PROTO_MAX_FRAME];
 static uint8_t s_evt_seq;
 
+/* v1.0 job layer storage: ~5 x 34 KB session slots + ~135 KB engine tables. Too big for DTCM
+ * (256 KB with .bss + stacks), so it lives in the dedicated 512 KB OCRAM (zeroed by startup.c).
+ * Only usb_task touches it. */
+#define OCRAM_BSS __attribute__((section(".ocram_bss"), aligned(32)))
+static tk_slot_t s_slots[TK_SLOTS] OCRAM_BSS;
+static tk_engine_t s_engine OCRAM_BSS;
+static tk_jobs_t s_jobs OCRAM_BSS;
+
 /* Queue bytes for bulk IN; keep servicing the stack while the TX FIFO drains. */
 static bool usb_send(const uint8_t *buf, size_t len)
 {
@@ -209,6 +218,46 @@ static void send_event(uint8_t cmd, const uint8_t *pl, uint16_t len)
     }
 }
 
+static void post_ui_job(const tk_app_t *app, const tk_jobs_t *j, uint8_t state, uint8_t pct)
+{
+    tk_ui_msg_t m = {.type = UI_MSG_JOB};
+    m.u.job.state = state;
+    m.u.job.progress = pct;
+    m.u.job.savings_pct = j->last_savings_pct;
+    m.u.job.job_id = j->job_id;
+    m.u.job.jobs_done = j->jobs_done;
+    m.u.job.tok_in = j->lifetime.tok_in;
+    m.u.job.tok_out = j->lifetime.tok_out;
+    m.u.job.dup_hits = j->lifetime.dup_hits;
+    (void)xQueueSend(app->q_ui, &m, 0);
+}
+
+/* After every frame / tick: EVT_PROGRESS (job_id u16, pct u8) to the host every >= 10 %, and the
+ * same progress / savings to the OLED. */
+static void report_job(const tk_app_t *app, const tk_jobs_t *j, bool mounted, bool aborted)
+{
+    static uint8_t last_pct = 0xFF;
+    static tk_job_state_t last_state = JOB_IDLE;
+    uint8_t pct = tk_jobs_progress(j);
+    bool running = (j->state == JOB_PASS1 || j->state == JOB_PASS2);
+    if (aborted) {
+        post_ui_job(app, j, UI_JOB_ABORTED, 0);
+    } else if (j->state != last_state || (running && (last_pct == 0xFF || pct >= last_pct + 10u))) {
+        if (running || j->state == JOB_DONE) {
+            if (mounted) {
+                uint8_t pl[3] = {(uint8_t)j->job_id, (uint8_t)(j->job_id >> 8), pct};
+                send_event(EVT_PROGRESS, pl, sizeof pl);
+            }
+            post_ui_job(app, j, running ? UI_JOB_RUNNING : UI_JOB_DONE, pct);
+        }
+        last_pct = pct;
+    }
+    if (!running) {
+        last_pct = 0xFF;
+    }
+    last_state = j->state;
+}
+
 static void post_ui_state(const tk_app_t *app, bool mounted, uint32_t ok, uint32_t bad)
 {
     tk_ui_msg_t m = {.type = UI_MSG_USB_STATE};
@@ -223,15 +272,20 @@ void usb_task(void *arg)
     const tk_app_t *app = arg;
     const tk_clock_info_t *clk = board_clock_info();
 
+    const tk_boot_info_t *boot = board_boot_info();
+    tk_jobs_init(&s_jobs, s_slots, &s_engine, MODE_DEFAULT);
+    s_jobs.cycles = board_cycles; /* GET_STATS cycles */
     proto_device_t dev = {
-        .mode = MODE_BALANCED,
+        .mode = MODE_DEFAULT,
         .part = (uint8_t)clk->part,
         .core_mhz = (uint16_t)(clk->core_hz / 1000000u),
         .fw_version = TK_FW_VERSION,
         .serial = board_unique_id(),
         .build_id = TK_BUILD_ID,
         .flash_size = 8u * 1024u * 1024u,
-        .caps = PROTO_CAP_EVENTS,
+        .caps = PROTO_CAP_EVENTS, /* + PROTO_CAP_SESSIONS added by proto_handle unless safe mode */
+        .jobs = &s_jobs,
+        .safe_mode = boot->safe_mode,
     };
     proto_parser_init(&s_parser);
 
@@ -274,6 +328,8 @@ void usb_task(void *arg)
                 if (len) {
                     (void)usb_send(s_tx, len);
                 }
+                report_job(app, &s_jobs, mounted, false);
+                xEventGroupSetBits(app->wd, WD_BIT_USB); /* long bursts: keep checking in */
                 if (dev.mode_changed) {
                     dev.mode_changed = false;
                     tk_ui_msg_t um = {.type = UI_MSG_MODE_FROM_HOST};
@@ -290,8 +346,13 @@ void usb_task(void *arg)
         while (xQueueReceive(app->q_usb, &msg, 0) == pdPASS) {
             if (msg.type == USB_MSG_MODE_FROM_DEVICE && msg.u.mode < MODE_COUNT) {
                 dev.mode = (tk_mode_t)msg.u.mode;
+                tk_jobs_set_mode(&s_jobs, dev.mode); /* device-global policy follows the mode */
                 if (mounted) {
                     send_event(EVT_MODE, &msg.u.mode, 1);
+                }
+            } else if (msg.type == USB_MSG_CANCEL_JOB) {
+                if (tk_jobs_cancel(&s_jobs)) {
+                    report_job(app, &s_jobs, mounted, true);
                 }
             } else if (msg.type == USB_MSG_BUTTON && mounted) {
                 uint8_t pl[2] = {msg.u.input.key, msg.u.input.action};
@@ -300,6 +361,9 @@ void usb_task(void *arg)
         }
 
         TickType_t now = xTaskGetTickCount();
+        if (tk_jobs_tick(&s_jobs, (uint32_t)(now * portTICK_PERIOD_MS))) {
+            report_job(app, &s_jobs, mounted, true); /* host went quiet mid-job: aborted, session restored */
+        }
         if ((ok != reported_ok || bad != reported_bad) && (now - last_report) > pdMS_TO_TICKS(250)) {
             reported_ok = ok;
             reported_bad = bad;

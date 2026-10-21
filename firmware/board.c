@@ -299,6 +299,8 @@ void board_wdog_start(uint32_t timeout_ms)
     __set_PRIMASK(primask);
 }
 
+uint32_t board_cycles(void) { return DWT->CYCCNT; }
+
 void board_wdog_feed(void) { RTWDOG->CNT = 0xB480A602u; }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -318,9 +320,56 @@ static void dwt_init(void)
     DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 }
 
+/* ---------------------------------------------------------------------------------------- */
+/* Reset cause + consecutive watchdog counter                                                */
+/* ---------------------------------------------------------------------------------------- */
+#define WDCNT_REG  (SNVS->LPGPR[3])
+#define WDCNT_TAG  0x544B0000u /* 'TK' in the high half marks a valid counter */
+static tk_boot_info_t s_boot;
+
+const tk_boot_info_t *board_boot_info(void) { return &s_boot; }
+
+const char *board_reset_cause_name(tk_reset_cause_t c)
+{
+    static const char *const n[] = {"power-on", "reset pin", "watchdog", "sysreset/lockup", "jtag",
+                                    "tempsense", "other"};
+    return (unsigned)c < sizeof n / sizeof n[0] ? n[c] : "?";
+}
+
+static void reset_cause_init(void)
+{
+    uint32_t sr = SRC->SRSR;
+    SRC->SRSR = sr & SRC_SRSR_W1C_BITS_MASK; /* write-1-to-clear so the next boot sees only its own cause */
+    s_boot.srsr = sr;
+    if (sr & (SRC_SRSR_WDOG3_RST_B_MASK | SRC_SRSR_WDOG_RST_B_MASK)) {
+        s_boot.cause = TK_RESET_WDOG; /* RTWDOG = WDOG3 (ours); WDOG1 unused but counted */
+    } else if (sr & SRC_SRSR_LOCKUP_SYSRESETREQ_MASK) {
+        s_boot.cause = TK_RESET_SYSRESET;
+    } else if (sr & (SRC_SRSR_JTAG_RST_B_MASK | SRC_SRSR_JTAG_SW_RST_MASK)) {
+        s_boot.cause = TK_RESET_JTAG;
+    } else if (sr & SRC_SRSR_TEMPSENSE_RST_B_MASK) {
+        s_boot.cause = TK_RESET_TEMP;
+    } else if (sr & SRC_SRSR_IPP_USER_RESET_B_MASK) {
+        s_boot.cause = TK_RESET_PIN;
+    } else if (sr & SRC_SRSR_IPP_RESET_B_MASK) {
+        s_boot.cause = TK_RESET_POR;
+    } else {
+        s_boot.cause = TK_RESET_OTHER;
+    }
+    uint32_t r = WDCNT_REG;
+    uint32_t n = ((r & 0xFFFF0000u) == WDCNT_TAG) ? (r & 0xFFu) : 0u;
+    n = (s_boot.cause == TK_RESET_WDOG) ? (n < 255u ? n + 1u : 255u) : 0u; /* any other reset clears it */
+    WDCNT_REG = WDCNT_TAG | n;
+    s_boot.wdog_count = (uint8_t)n;
+    s_boot.safe_mode = n >= TK_SAFE_MODE_WDOG_RESETS;
+}
+
+void board_boot_healthy(void) { WDCNT_REG = WDCNT_TAG; }
+
 void board_init(void)
 {
     dwt_init();
+    reset_cause_init();
     clock_init();
     pinmux_init();
     gpio_init();
@@ -336,6 +385,16 @@ void board_init(void)
     board_uart_puthex(DCDC->REG3 & DCDC_REG3_TRG_MASK);
     if (s_clk.fell_back) {
         board_uart_puts(" (DVL6B build, fuses not 600 MHz grade -> 528 MHz fallback)");
+    }
+    board_uart_puts("\r\n");
+    board_uart_puts("reset=");
+    board_uart_puts(board_reset_cause_name(s_boot.cause));
+    board_uart_puts(" srsr=");
+    board_uart_puthex(s_boot.srsr);
+    board_uart_puts(" wdog_resets=");
+    board_uart_puthex(s_boot.wdog_count);
+    if (s_boot.safe_mode) {
+        board_uart_puts(" SAFE MODE (jobs disabled)");
     }
     board_uart_puts("\r\n");
 }

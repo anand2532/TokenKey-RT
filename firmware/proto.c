@@ -1,5 +1,6 @@
 /* TokenKey RT - USB frame protocol: CRC, builder, streaming parser, dispatcher. */
 #include "proto.h"
+#include "jobs.h"
 
 #include <string.h>
 
@@ -34,13 +35,13 @@ uint16_t proto_crc16(const uint8_t *d, size_t n) { return proto_crc16_update(0xF
 
 uint8_t proto_mode_budget_pct(tk_mode_t m)
 {
-    static const uint8_t pct[MODE_COUNT] = {25, 50, 85};
+    static const uint8_t pct[MODE_COUNT] = {25, 50, 85, 100, 100};
     return (m < MODE_COUNT) ? pct[m] : 0;
 }
 
 const char *proto_mode_name(tk_mode_t m)
 {
-    static const char *const n[MODE_COUNT] = {"Economy", "Balanced", "Quality"};
+    static const char *const n[MODE_COUNT] = {"Economy", "Balanced", "Quality", "S-protect", "Dedup"};
     return (m < MODE_COUNT) ? n[m] : "?";
 }
 
@@ -175,7 +176,7 @@ size_t proto_handle(proto_device_t *dev, proto_parse_result_t r, const proto_fra
         put16(&pl[6], dev->core_mhz);
         put16(&pl[8], PROTO_MAX_PAYLOAD);
         pl[10] = PROTO_WINDOW;
-        put32(&pl[11], dev->caps);
+        put32(&pl[11], dev->caps | ((dev->jobs && !dev->safe_mode) ? PROTO_CAP_SESSIONS : 0u));
         pl[15] = PROTO_VERSION_MINOR;
         return reply(out, cap, f, pl, 16);
     }
@@ -212,6 +213,9 @@ size_t proto_handle(proto_device_t *dev, proto_parse_result_t r, const proto_fra
             dev->mode = (tk_mode_t)f->payload[0];
             dev->mode_changed = true;
         }
+        if (dev->jobs) {
+            tk_jobs_set_mode(dev->jobs, dev->mode); /* SET_MODE m == SET_POLICY {1, m} */
+        }
         pl[0] = (uint8_t)dev->mode;
         return reply(out, cap, f, pl, 1);
     case CMD_GET_MODE:
@@ -223,12 +227,20 @@ size_t proto_handle(proto_device_t *dev, proto_parse_result_t r, const proto_fra
     case CMD_JOB_END:
     case CMD_RESULT_READ:
     case CMD_JOB_ABORT:
+    case CMD_SET_POLICY:
+        if (dev->jobs && dev->safe_mode) {
+            return proto_build_error(out, cap, f->seq, f->cmd, ERR_SAFE_MODE, 0);
+        }
+        /* fall through */
     case CMD_GET_STATS:
     case CMD_RESET_STATS:
-    case CMD_ENTER_BOOTLOADER:
-    case CMD_SET_POLICY:
     case CMD_GET_POLICY:
-        /* Specified (v0.2 data model included) but not part of the skeleton. */
+        if (dev->jobs) {
+            return tk_jobs_handle(dev->jobs, f, dev->uptime_ms, out, cap);
+        }
+        return proto_build_error(out, cap, f->seq, f->cmd, ERR_UNKNOWN_CMD, ERR_DETAIL_NOT_IMPLEMENTED);
+    case CMD_ENTER_BOOTLOADER:
+        /* Specified but not implemented in v1.0 (recovery is via BOOT_MODE straps / SDP). */
         return proto_build_error(out, cap, f->seq, f->cmd, ERR_UNKNOWN_CMD, ERR_DETAIL_NOT_IMPLEMENTED);
     default:
         return proto_build_error(out, cap, f->seq, f->cmd, ERR_UNKNOWN_CMD, 0);
@@ -293,6 +305,33 @@ uint8_t proto_parse_job_begin(const uint8_t *p, uint16_t len, proto_job_begin_t 
         jb->spans[i] = sp;
     }
     jb->span_count = n;
+    /* v1.0: message table after the spans: msg_count u16, {len u32, role u8, flags u8}[] */
+    uint32_t m0 = JOB_BEGIN_V02_LEN + (uint32_t)n * JOB_SPAN_WIRE_LEN;
+    if ((uint32_t)len >= m0 + 2u) {
+        uint16_t mc = get16(&p[m0]);
+        if (mc > PROTO_MAX_MSGS) {
+            *detail = PROTO_MAX_MSGS;
+            return ERR_CTX_OVERFLOW;
+        }
+        if ((uint32_t)len < m0 + 2u + (uint32_t)mc * JOB_MSG_WIRE_LEN) {
+            *detail = JB_DETAIL_MSGS_TRUNCATED;
+            return ERR_BAD_PARAM;
+        }
+        uint64_t sum = 0;
+        for (uint16_t i = 0; i < mc; i++) {
+            const uint8_t *q = &p[m0 + 2u + (uint32_t)i * JOB_MSG_WIRE_LEN];
+            jb->msgs[i].len = get32(q);
+            jb->msgs[i].role = q[4];
+            jb->msgs[i].flags = q[5];
+            sum += jb->msgs[i].len;
+        }
+        if (sum != jb->total_len) {
+            *detail = JB_DETAIL_MSG_SUM;
+            return ERR_BAD_PARAM;
+        }
+        jb->has_msgs = true;
+        jb->msg_count = mc;
+    }
     return ERR_OK;
 }
 
@@ -302,8 +341,24 @@ size_t proto_put_job_begin(uint8_t *out, size_t cap, const proto_job_begin_t *jb
         return 0;
     }
     size_t n = JOB_BEGIN_V02_LEN + (size_t)jb->span_count * JOB_SPAN_WIRE_LEN;
+    size_t m0 = n;
+    if (jb->has_msgs) {
+        if (jb->msg_count > PROTO_MAX_MSGS) {
+            return 0;
+        }
+        n += 2u + (size_t)jb->msg_count * JOB_MSG_WIRE_LEN;
+    }
     if (cap < n) {
         return 0;
+    }
+    if (jb->has_msgs) {
+        put16(&out[m0], jb->msg_count);
+        for (uint16_t i = 0; i < jb->msg_count; i++) {
+            uint8_t *q = &out[m0 + 2u + (size_t)i * JOB_MSG_WIRE_LEN];
+            put32(q, jb->msgs[i].len);
+            q[4] = jb->msgs[i].role;
+            q[5] = jb->msgs[i].flags;
+        }
     }
     put16(&out[0], jb->job_id);
     put32(&out[2], jb->total_len);
@@ -426,17 +481,18 @@ int proto_session_protected_kind(const proto_session_t *s, uint32_t offset, uint
 /* ---- v0.2: JOB_END result ---------------------------------------------------------------- */
 size_t proto_put_job_result(uint8_t *out, size_t cap, const proto_job_result_t *r)
 {
-    if (cap < JOB_END_V02_LEN) {
+    if (cap < JOB_END_V10_LEN) {
         return 0;
     }
     put16(&out[0], r->job_id);
-    put32(&out[2], r->est_tokens_in);
-    put32(&out[6], r->est_tokens_out);
-    put32(&out[10], r->out_len);
-    put32(&out[14], r->cache_stable_len);
-    put32(&out[18], r->cache_stable_xxh);
-    put32(&out[22], r->protected_bytes);
-    return JOB_END_V02_LEN;
+    out[2] = r->status;
+    put32(&out[3], r->seg_count);
+    put32(&out[7], r->est_tokens_in);
+    put32(&out[11], r->est_tokens_out);
+    put32(&out[15], r->kept_bytes);
+    put32(&out[19], r->dup_hits);
+    put32(&out[23], r->set_full);
+    return JOB_END_V10_LEN;
 }
 
 uint8_t proto_parse_job_result(const uint8_t *p, uint16_t len, proto_job_result_t *r)
@@ -446,35 +502,47 @@ uint8_t proto_parse_job_result(const uint8_t *p, uint16_t len, proto_job_result_
         return ERR_BAD_LEN;
     }
     r->job_id = get16(&p[0]);
-    r->est_tokens_in = get32(&p[2]);
-    if (len < JOB_END_V02_LEN) { /* v0.1 device: no cache-stable report */
+    if (len < JOB_END_V10_LEN) { /* v0.1 device: job_id, est_tokens_in */
+        r->est_tokens_in = get32(&p[2]);
         return ERR_OK;
     }
-    r->est_tokens_out = get32(&p[6]);
-    r->out_len = get32(&p[10]);
-    r->cache_stable_len = get32(&p[14]);
-    r->cache_stable_xxh = get32(&p[18]);
-    r->protected_bytes = get32(&p[22]);
+    r->status = p[2];
+    r->seg_count = get32(&p[3]);
+    r->est_tokens_in = get32(&p[7]);
+    r->est_tokens_out = get32(&p[11]);
+    r->kept_bytes = get32(&p[15]);
+    r->dup_hits = get32(&p[19]);
+    r->set_full = get32(&p[23]);
     return ERR_OK;
 }
 
 /* ---- v0.2: policy ------------------------------------------------------------------------- */
 void proto_policy_preset(tk_mode_t m, proto_policy_t *pol)
 {
-    /* keep-priority weights per segment type: TEXT, CODE, TOOL_OUTPUT, LOG */
-    static const uint8_t w[MODE_COUNT][SEG_TYPE_COUNT] = {
-        {40, 70, 30, 10}, /* Economy  */
-        {60, 85, 50, 25}, /* Balanced */
-        {85, 100, 75, 50}, /* Quality  */
-    };
+    /* TokenKey PoC (session_reducer.py / tk_core.py): weights diff 400 > code 300 > log 200 >
+     * prose 100; Economy/Balanced/Quality keep 25/50/85 % of OLDER tool output; S-protect and
+     * dedup-only apply no ratio cut. Dedup on in all presets; the newest message is exempt
+     * from cross-message dedup except in dedup-only (PoC variant G); TTL 5 min (dedup-only:
+     * none, its dupset lives for the whole conversation). */
     if (m >= MODE_COUNT) {
-        m = MODE_BALANCED;
+        m = MODE_DEFAULT;
     }
     pol->preset = (uint8_t)m;
-    pol->budget_pct = proto_mode_budget_pct(m);
+    pol->keep_pct = proto_mode_budget_pct(m);
     pol->dedup = true;
-    pol->cache_stable_prefix = POLICY_CACHE_PREFIX_ALL;
-    memcpy(pol->type_weight, w[m], SEG_TYPE_COUNT);
+    pol->newest_dedup = (m == MODE_DEDUP_ONLY); /* PoC G: the newest output is deduped too */
+    pol->rules = POLICY_RULES_SESSION;
+    pol->ttl_s = (m == MODE_DEDUP_ONLY) ? POLICY_TTL_NEVER : 300u;
+    pol->type_weight[SEG_PROSE] = 100;
+    pol->type_weight[SEG_CODE] = 300;
+    pol->type_weight[SEG_DIFF] = 400;
+    pol->type_weight[SEG_LOG] = 200;
+}
+
+static bool pol_same(const proto_policy_t *a, const proto_policy_t *b)
+{
+    return a->keep_pct == b->keep_pct && a->dedup == b->dedup && a->newest_dedup == b->newest_dedup &&
+           a->rules == b->rules && a->ttl_s == b->ttl_s && memcmp(a->type_weight, b->type_weight, sizeof a->type_weight) == 0;
 }
 
 static uint8_t policy_match_preset(const proto_policy_t *pol)
@@ -482,9 +550,7 @@ static uint8_t policy_match_preset(const proto_policy_t *pol)
     for (int m = 0; m < MODE_COUNT; m++) {
         proto_policy_t ref;
         proto_policy_preset((tk_mode_t)m, &ref);
-        if (ref.budget_pct == pol->budget_pct && ref.dedup == pol->dedup &&
-            ref.cache_stable_prefix == pol->cache_stable_prefix &&
-            memcmp(ref.type_weight, pol->type_weight, SEG_TYPE_COUNT) == 0) {
+        if (pol_same(&ref, pol)) {
             return (uint8_t)m;
         }
     }
@@ -513,6 +579,8 @@ uint8_t proto_policy_parse(const uint8_t *p, uint16_t len, const proto_policy_t 
         return ERR_POLICY_INVALID;
     }
     uint16_t i = 2;
+#define BADLEN(n) if (l != (n)) { *detail = (uint16_t)(POL_DETAIL_BAD_LEN | t); return ERR_POLICY_INVALID; }
+#define BADVAL(c) if (c) { *detail = (uint16_t)(POL_DETAIL_BAD_VALUE | t); return ERR_POLICY_INVALID; }
     while (i < len) {
         if (len - i < 2 || len - i - 2 < p[i + 1]) {
             *detail = POL_DETAIL_TRUNCATED;
@@ -521,24 +589,34 @@ uint8_t proto_policy_parse(const uint8_t *p, uint16_t len, const proto_policy_t 
         uint8_t t = p[i], l = p[i + 1];
         const uint8_t *v = &p[i + 2];
         switch (t) {
-        case POL_TLV_BUDGET_PCT:
-            if (l != 1) { *detail = (uint16_t)(POL_DETAIL_BAD_LEN | t); return ERR_POLICY_INVALID; }
-            if (v[0] == 0 || v[0] > 100) { *detail = (uint16_t)(POL_DETAIL_BAD_VALUE | t); return ERR_POLICY_INVALID; }
-            pol.budget_pct = v[0];
+        case POL_TLV_KEEP_PCT:
+            BADLEN(1);
+            BADVAL(v[0] == 0 || v[0] > 100);
+            pol.keep_pct = v[0];
             break;
         case POL_TLV_DEDUP:
-            if (l != 1) { *detail = (uint16_t)(POL_DETAIL_BAD_LEN | t); return ERR_POLICY_INVALID; }
-            if (v[0] > 1) { *detail = (uint16_t)(POL_DETAIL_BAD_VALUE | t); return ERR_POLICY_INVALID; }
+            BADLEN(1);
+            BADVAL(v[0] > 1);
             pol.dedup = v[0] != 0;
             break;
-        case POL_TLV_CACHE_STABLE_PREFIX:
-            if (l != 4) { *detail = (uint16_t)(POL_DETAIL_BAD_LEN | t); return ERR_POLICY_INVALID; }
-            pol.cache_stable_prefix = get32(v);
+        case POL_TLV_NEWEST_DEDUP:
+            BADLEN(1);
+            BADVAL(v[0] > 1);
+            pol.newest_dedup = v[0] != 0;
+            break;
+        case POL_TLV_RULES:
+            BADLEN(1);
+            BADVAL(v[0] > POLICY_RULES_SESSION);
+            pol.rules = v[0];
+            break;
+        case POL_TLV_TTL_S:
+            BADLEN(4);
+            pol.ttl_s = get32(v);
             break;
         case POL_TLV_TYPE_WEIGHT:
-            if (l != 2) { *detail = (uint16_t)(POL_DETAIL_BAD_LEN | t); return ERR_POLICY_INVALID; }
-            if (v[0] >= SEG_TYPE_COUNT || v[1] > 100) { *detail = (uint16_t)(POL_DETAIL_BAD_VALUE | t); return ERR_POLICY_INVALID; }
-            pol.type_weight[v[0]] = v[1];
+            BADLEN(3);
+            BADVAL(v[0] >= SEG_TYPE_COUNT || get16(v + 1) > 1000);
+            pol.type_weight[v[0]] = get16(v + 1);
             break;
         default:
             if (!(t & POL_TLV_OPTIONAL)) {
@@ -549,6 +627,8 @@ uint8_t proto_policy_parse(const uint8_t *p, uint16_t len, const proto_policy_t 
         }
         i = (uint16_t)(i + 2u + l);
     }
+#undef BADLEN
+#undef BADVAL
     pol.preset = policy_match_preset(&pol);
     *out = pol;
     return ERR_OK;
@@ -556,18 +636,19 @@ uint8_t proto_policy_parse(const uint8_t *p, uint16_t len, const proto_policy_t 
 
 size_t proto_policy_serialize(const proto_policy_t *pol, uint8_t *out, size_t cap)
 {
-    const size_t n = 2u + 3u + 3u + 6u + 4u * SEG_TYPE_COUNT; /* 30 bytes */
-    if (cap < n) {
+    if (cap < POLICY_BLOB_LEN) {
         return 0;
     }
     size_t i = 0;
     out[i++] = POLICY_VERSION;
     out[i++] = policy_match_preset(pol);
-    out[i++] = POL_TLV_BUDGET_PCT; out[i++] = 1; out[i++] = pol->budget_pct;
+    out[i++] = POL_TLV_KEEP_PCT; out[i++] = 1; out[i++] = pol->keep_pct;
     out[i++] = POL_TLV_DEDUP; out[i++] = 1; out[i++] = pol->dedup ? 1u : 0u;
-    out[i++] = POL_TLV_CACHE_STABLE_PREFIX; out[i++] = 4; put32(&out[i], pol->cache_stable_prefix); i += 4;
+    out[i++] = POL_TLV_NEWEST_DEDUP; out[i++] = 1; out[i++] = pol->newest_dedup ? 1u : 0u;
+    out[i++] = POL_TLV_RULES; out[i++] = 1; out[i++] = pol->rules;
+    out[i++] = POL_TLV_TTL_S; out[i++] = 4; put32(&out[i], pol->ttl_s); i += 4;
     for (uint8_t t = 0; t < SEG_TYPE_COUNT; t++) {
-        out[i++] = POL_TLV_TYPE_WEIGHT; out[i++] = 2; out[i++] = t; out[i++] = pol->type_weight[t];
+        out[i++] = POL_TLV_TYPE_WEIGHT; out[i++] = 3; out[i++] = t; put16(&out[i], pol->type_weight[t]); i += 2;
     }
-    return i;
+    return i; /* POLICY_BLOB_LEN */
 }
