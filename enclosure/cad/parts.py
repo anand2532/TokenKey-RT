@@ -133,14 +133,14 @@ def tray():
     t = t.union(cyl(bx, by, P.Z_FLOOR_TOP - EPS, tube_top, P.BOOT_TUBE_OD))
     t = t.cut(cyl(bx, by, P.Z_DESK - 1, tube_top + 1, P.BOOT_HOLE_D))
     t = t.cut(cyl(bx, by, P.Z_DESK - 1, P.Z_DESK + 0.6, P.BOOT_HOLE_D + 1.2).faces(">Z").chamfer(0.5))
-    # ballast pocket walls
-    x0, ky0, x1, ky1 = P.BALLAST_K
-    c, wl = 0.2, P.BALLAST_WALL
-    X0, Y0, X1, Y1 = x0 - c, P.PCB_D - ky1 - c, x1 + c, P.PCB_D - ky0 + c
-    t = t.union(box(X0 - wl, Y0 - wl, P.Z_FLOOR_TOP - EPS, X1 + wl, Y1 + wl, P.Z_FLOOR_TOP + P.BALLAST_T)
-                .cut(box(X0, Y0, P.Z_FLOOR_TOP - 1, X1, Y1, P.Z_FLOOR_TOP + 5)))
-    # grip-ring groove on the underside
-    t = t.cut(ring(P.Z_DESK - 1, P.Z_DESK + P.GRIP_D, P.GRIP_INSET, P.GRIP_INSET + P.GRIP_W))
+    # steel-plate locating pins (plate is bonded with VHB; pins stop it sliding before the tape sets)
+    for (kx, ky) in P.PLATE_PIN_K:
+        t = t.union(cyl(*P.K(kx, ky), P.Z_FLOOR_TOP - EPS, P.Z_FLOOR_TOP + P.PLATE_PIN_H, P.PLATE_PIN_D)
+                    .faces(">Z").chamfer(0.3))
+    # silicone-foot pockets (the NE foot sits in the hatch cover instead)
+    for name, (x, y) in P.FEET.items():
+        if name != "NE_cover":
+            t = t.cut(foot_pocket(x, y))
     t = t.cut(usb_cuts())
     return t
 
@@ -155,7 +155,23 @@ def hatch_cover():
                     hx + w / 2 - g, hy + h / 2 - g, P.Z_FLOOR_TOP))
     # thumbnail notch + "UART/SWD" is printed on the label later
     c = c.cut(cyl(hx - w / 2 - r + g, hy, P.Z_DESK - 1, P.Z_DESK + 0.5, 3.0))
+    if "NE_cover" in P.FEET:
+        c = c.cut(foot_pocket(*P.FEET["NE_cover"]))
     return c
+
+
+def foot_pocket(x, y):
+    return cyl(x, y, P.Z_DESK - 1, P.Z_DESK + P.FOOT_POCKET_DEPTH, P.FOOT_D + 2 * P.FOOT_POCKET_CLR)
+
+
+def feet():
+    """Stock adhesive silicone feet (purchased; modelled for interference and the assembly)."""
+    f = None
+    for (x, y) in P.FEET.values():
+        b = cyl(x, y, P.Z_DESK + P.FOOT_POCKET_DEPTH - P.FOOT_H, P.Z_DESK + P.FOOT_POCKET_DEPTH, P.FOOT_D)
+        b = b.faces("<Z").edges().fillet(0.8)
+        f = b if f is None else f.union(b)
+    return f
 
 
 def knob(shaft_top=None, knob_h=None, insert=None):
@@ -226,9 +242,20 @@ def light_pipe():
     return p
 
 
+def _poly_solid(ring_coords, z0, z1):
+    pts = [P.K(x, y) for (x, y) in list(ring_coords)[:-1]]
+    return cq.Workplane("XY").workplane(offset=z0).polyline(pts).close().extrude(z1 - z0)
+
+
 def ballast():
-    x0, ky0, x1, ky1 = P.BALLAST_K
-    return kbox((x0, ky0, x1, ky1), P.Z_FLOOR_TOP, P.Z_FLOOR_TOP + P.BALLAST_T)
+    """Laser-cut steel plate, outline from plate.py (largest shape that fits under the board)."""
+    import plate
+    s = plate.outline()
+    z0, z1 = P.Z_FLOOR_TOP, P.Z_FLOOR_TOP + P.PLATE_T
+    b = _poly_solid(s.exterior.coords, z0, z1)
+    for i in s.interiors:
+        b = b.cut(_poly_solid(i.coords, z0 - 1, z1 + 1))
+    return b
 
 
 def build_all():
@@ -242,6 +269,7 @@ def build_all():
         "button_cap_btn2": button_cap(*b2),
         "light_pipe": light_pipe(),
         "ballast": ballast(),
+        "feet": feet(),
     }
     if P.KNOB_INSERT == "sleeve":
         parts["knob_sleeve"] = knob_sleeve()

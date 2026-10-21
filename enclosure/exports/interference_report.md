@@ -2,7 +2,7 @@
 
 Board ref e2e5ff9; clash threshold 0.3 mm; header 3.0, module 2.65, J2 y 5.0, shaft tip 24.5, knob H 16.5.
 
-Pairs checked (bbox within 3 mm): 309; CLASH/TIGHT: 0
+Pairs checked (bbox within 3 mm): 384; CLASH/TIGHT: 0
 
 | kind | A | B | min clearance (mm) | overlap (mm3) | status |
 |---|---|---|---|---|---|
@@ -14,6 +14,8 @@ Pairs checked (bbox within 3 mm): 309; CLASH/TIGHT: 0
 | part-part | top_shell | light_pipe | 0.00 | 0.000 | fit/contact |
 | part-part | bottom_tray | hatch_cover | 0.00 | 0.000 | fit/contact |
 | part-part | bottom_tray | ballast | 0.00 | 0.000 | fit/contact |
+| part-part | bottom_tray | feet | 0.00 | 0.000 | fit/contact |
+| part-part | hatch_cover | feet | 0.00 | 0.000 | fit/contact |
 | part-part | knob | knob_sleeve | 0.01 | 0.000 | fit/contact |
 | part-board | knob_sleeve | SW2 EC11 body+shaft | 0.02 | 0.000 | fit/contact |
 | part-board | top_shell | OLED module PCB | 0.15 | 0.000 | fit/contact |
@@ -26,20 +28,27 @@ Pairs checked (bbox within 3 mm): 309; CLASH/TIGHT: 0
 | part-board | bottom_tray | SW1 (SW) | 0.30 | 0.000 | ok |
 | part-board | top_shell | OLED glass | 0.35 | 0.000 | ok |
 | part-board | top_shell | OLED FPC bend | 0.35 | 0.000 | ok |
+| part-board | ballast | C3 (C DNP) | 0.35 | 0.000 | ok |
 | part-board | ballast | C40 (C) | 0.35 | 0.000 | ok |
+| part-board | ballast | C4 (C DNP) | 0.35 | 0.000 | ok |
+| part-board | ballast | THT tails | 0.48 | 0.000 | ok |
 | part-board | top_shell | SW2 EC11 body+shaft | 0.50 | 0.000 | ok |
 | part-board | bottom_tray | L1 (L DNP) | 0.50 | 0.000 | ok |
 | part-board | button_cap_btn1 | pcb | 0.50 | 0.000 | ok |
 | part-board | button_cap_btn2 | pcb | 0.50 | 0.000 | ok |
 | part-board | knob | SW2 EC11 body+shaft | 0.50 | 0.000 | ok |
+| part-board | ballast | L1 (L DNP) | 0.50 | 0.000 | ok |
+| part-board | ballast | SW1 (SW) | 0.50 | 0.000 | ok |
+| part-board | ballast | U3 (SOT-23-5 DNP) | 0.51 | 0.000 | ok |
+| part-part | ballast | feet | 0.60 | 0.000 | ok |
 | part-board | top_shell | U4 (SOIC-8) | 0.60 | 0.000 | ok |
-| part-board | bottom_tray | R7 (R) | 0.75 | 0.000 | ok |
 | part-board | ballast | C28 (C) | 0.75 | 0.000 | ok |
 | part-board | ballast | C27 (C) | 0.75 | 0.000 | ok |
 | part-board | ballast | C36 (C) | 0.75 | 0.000 | ok |
 | part-board | ballast | C31 (C) | 0.75 | 0.000 | ok |
 | part-board | ballast | C7 (C) | 0.75 | 0.000 | ok |
 | part-board | ballast | C38 (C) | 0.75 | 0.000 | ok |
+| part-board | ballast | U5 (Winbond DNP) | 0.75 | 0.000 | ok |
 | part-board | ballast | C23 (C) | 0.75 | 0.000 | ok |
 | part-board | ballast | C19 (C) | 0.75 | 0.000 | ok |
 | part-board | ballast | C37 (C) | 0.75 | 0.000 | ok |
@@ -48,11 +57,15 @@ Pairs checked (bbox within 3 mm): 309; CLASH/TIGHT: 0
 | part-board | ballast | C21 (C) | 0.75 | 0.000 | ok |
 | part-board | ballast | C9 (C) | 0.75 | 0.000 | ok |
 | part-board | ballast | C15 (C) | 0.75 | 0.000 | ok |
+| part-board | ballast | R11 (R DNP) | 0.75 | 0.000 | ok |
+| part-board | ballast | C50 (C DNP) | 0.75 | 0.000 | ok |
 | part-board | ballast | C6 (C) | 0.75 | 0.000 | ok |
 | part-board | ballast | C16 (C) | 0.75 | 0.000 | ok |
 | part-board | ballast | C8 (C) | 0.75 | 0.000 | ok |
 | part-board | ballast | C42 (C) | 0.75 | 0.000 | ok |
 | part-board | ballast | C43 (C) | 0.75 | 0.000 | ok |
+| part-board | ballast | R7 (R) | 0.75 | 0.000 | ok |
+| part-board | ballast | R10 (R DNP) | 0.75 | 0.000 | ok |
 | part-board | ballast | C29 (C) | 0.75 | 0.000 | ok |
 | part-board | ballast | C24 (C) | 0.75 | 0.000 | ok |
 | part-board | ballast | C25 (C) | 0.75 | 0.000 | ok |
@@ -62,15 +75,7 @@ Pairs checked (bbox within 3 mm): 309; CLASH/TIGHT: 0
 | part-board | ballast | C5 (C) | 0.75 | 0.000 | ok |
 | part-board | ballast | C33 (C) | 0.75 | 0.000 | ok |
 | part-board | top_shell | J2 pin tips | 0.80 | 0.000 | ok |
-| part-board | bottom_tray | U5 (Winbond DNP) | 0.81 | 0.000 | ok |
-| part-board | bottom_tray | C36 (C) | 0.85 | 0.000 | ok |
-| part-board | bottom_tray | C38 (C) | 0.85 | 0.000 | ok |
-| part-board | bottom_tray | C37 (C) | 0.85 | 0.000 | ok |
-| part-board | ballast | R7 (R) | 0.89 | 0.000 | ok |
-| part-board | bottom_tray | C40 (C) | 0.90 | 0.000 | ok |
-| part-board | bottom_tray | R11 (R DNP) | 0.98 | 0.000 | ok |
-| part-board | bottom_tray | R10 (R DNP) | 0.98 | 0.000 | ok |
-| part-board | bottom_tray | C50 (C DNP) | 0.99 | 0.000 | ok |
+| part-board | bottom_tray | U5 (Winbond DNP) | 0.97 | 0.000 | ok |
 | part-board | bottom_tray | THT tails | 1.00 | 0.000 | ok |
 | part-board | hatch_cover | THT tails | 1.00 | 0.000 | ok |
 

@@ -8,7 +8,7 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 COLORS = {"top_shell": (0.80, 0.82, 0.86), "bottom_tray": (0.30, 0.32, 0.36), "hatch_cover": (0.45, 0.47, 0.52),
           "knob": (0.62, 0.64, 0.68), "knob_sleeve": (0.85, 0.70, 0.30), "button_cap_btn1": (0.20, 0.45, 0.80),
-          "button_cap_btn2": (0.20, 0.45, 0.80), "light_pipe": (0.85, 0.95, 1.0), "ballast": (0.55, 0.55, 0.55),
+          "button_cap_btn2": (0.20, 0.45, 0.80), "light_pipe": (0.85, 0.95, 1.0), "ballast": (0.55, 0.55, 0.55), "feet": (0.15, 0.15, 0.15),
           "board": (0.10, 0.55, 0.25), "oled": (0.05, 0.05, 0.08)}
 LIGHT = np.array([0.4, -0.5, 0.75]); LIGHT /= np.linalg.norm(LIGHT)
 
